@@ -25,14 +25,21 @@ use crate::protocols::packet::tcp::{Tcp, ACK, FIN, RST, SYN};
 use crate::protocols::packet::Packet;
 use crate::protocols::stream::{ConnParser, Session};
 use crate::subscription::{Level, Subscribable, Subscription, Trackable};
+use crate::dpdk::{rte_rdtsc, rte_get_tsc_hz};
 
 use serde::ser::{SerializeStruct, Serializer};
 use serde::Serialize;
 
+use lazy_static::lazy_static;
+
 use std::collections::HashMap;
 use std::fmt;
 use std::net::SocketAddr;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, UNIX_EPOCH};
+
+lazy_static! {
+    static ref TSC_HZ: f64 = unsafe { rte_get_tsc_hz() as f64 };
+}
 
 /// A connection features record.
 ///
@@ -152,6 +159,9 @@ impl Trackable for TrackedConnectionFeatures {
 /// A uni-directional flow.
 #[derive(Debug, Clone, Serialize)]
 pub struct FlowFeatures {
+    pub start_tsc: u64,
+    pub packet_cnt: u64,
+    pub delta_ns: Vec<u64>,
     pub ip_ihl: Vec<u8>,
     pub ip_dscp: Vec<u8>,
     pub ip_ecn: Vec<u8>,
@@ -181,12 +191,14 @@ pub struct FlowFeatures {
     pub tcp_window_size: Vec<u16>,
     pub tcp_checksum: Vec<u16>,
     pub tcp_urgent_ptr: Vec<u16>,
-    pub nb_pkts: u64,
 }
 
 impl FlowFeatures {
     fn new() -> Self {
         FlowFeatures {
+            start_tsc: unsafe { rte_rdtsc() },
+            packet_cnt: 0,
+            delta_ns: vec![],
             ip_ihl: vec![],
             ip_dscp: vec![],
             ip_ecn: vec![],
@@ -221,22 +233,26 @@ impl FlowFeatures {
 
     #[inline]
     fn insert_segment(&mut self, segment: L4Pdu) {
+        println!("{}", unsafe {rte_get_tsc_hz()});
+        self.packet_cnt += 1;
         let mbuf = segment.mbuf_ref();
         if let Ok(eth) = mbuf.parse_to::<Ethernet>() {
+            let curr_tsc = unsafe { rte_rdtsc() };
+            self.delta_ns.push(((curr_tsc - self.start_tsc) as f64 / *TSC_HZ * 1e9) as u64);
             if let Ok(ipv4) = eth.parse_to::<Ipv4>() {
+                self.ip_ihl.push(ipv4.ihl());
+                self.ip_dscp.push(ipv4.dscp());
+                self.ip_ecn.push(ipv4.ecn());
+                self.ip_total_length.push(ipv4.total_length());
+                self.ip_id.push(ipv4.identification());
+                self.ip_flags_rf.push(ipv4.rf());
+                self.ip_flags_df.push(ipv4.df());
+                self.ip_flags_mf.push(ipv4.mf());
+                self.ip_fragment_offset.push(ipv4.fragment_offset());
+                self.ip_ttl.push(ipv4.time_to_live());
+                self.ip_protocol.push(ipv4.protocol());
+                self.ip_header_checksum.push(ipv4.header_checksum());
                 if let Ok(tcp) = ipv4.parse_to::<Tcp>() {
-                    self.ip_ihl.push(ipv4.ihl());
-                    self.ip_dscp.push(ipv4.dscp());
-                    self.ip_ecn.push(ipv4.ecn());
-                    self.ip_total_length.push(ipv4.total_length());
-                    self.ip_id.push(ipv4.identification());
-                    self.ip_flags_rf.push(ipv4.rf());
-                    self.ip_flags_df.push(ipv4.df());
-                    self.ip_flags_mf.push(ipv4.mf());
-                    self.ip_fragment_offset.push(ipv4.fragment_offset());
-                    self.ip_ttl.push(ipv4.time_to_live());
-                    self.ip_protocol.push(ipv4.protocol());
-                    self.ip_header_checksum.push(ipv4.header_checksum());
                     self.tcp_src_port.push(tcp.src_port());
                     self.tcp_dst_port.push(tcp.dst_port());
                     self.tcp_seq_num.push(tcp.seq_no());
@@ -257,6 +273,5 @@ impl FlowFeatures {
                 }
             }
         }
-        self.nb_pkts += 1;
     }
 }

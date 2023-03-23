@@ -14,6 +14,7 @@ nb_memory_channels = 6
 [offline]
    # pcap = "./traces/small_flows.pcap"
     pcap = "/home/gerryw/sample_pcaps/smallFlows.pcap"
+ #   pcap = "/home/gerryw/sample_pcaps/ipv4frags.pcap"
     mtu = 9702
 
 [conntrack]
