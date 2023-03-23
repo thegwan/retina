@@ -1,5 +1,5 @@
 use retina_core::config::load_config;
-use retina_core::subscription::Connection;
+use retina_core::subscription::ConnectionFeatures;
 use retina_core::Runtime;
 use retina_filtergen::filter;
 
@@ -22,7 +22,7 @@ struct Args {
         long,
         parse(from_os_str),
         value_name = "FILE",
-        default_value = "conn.jsonl"
+        default_value = "connfeatures.jsonl"
     )]
     outfile: PathBuf,
 }
@@ -37,8 +37,9 @@ fn main() -> Result<()> {
     let file = Mutex::new(BufWriter::new(File::create(&args.outfile)?));
     let cnt = AtomicUsize::new(0);
 
-    let callback = |conn: Connection| {
+    let callback = |conn: ConnectionFeatures| {
         if let Ok(serialized) = serde_json::to_string(&conn) {
+            println!("{:?}", conn);
             let mut wtr = file.lock().unwrap();
             wtr.write_all(serialized.as_bytes()).unwrap();
             wtr.write_all(b"\n").unwrap();
