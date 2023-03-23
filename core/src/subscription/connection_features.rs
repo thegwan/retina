@@ -152,27 +152,70 @@ impl Trackable for TrackedConnectionFeatures {
 /// A uni-directional flow.
 #[derive(Debug, Clone, Serialize)]
 pub struct FlowFeatures {
+    pub ip_ihl: Vec<u8>,
     pub ip_dscp: Vec<u8>,
     pub ip_ecn: Vec<u8>,
+    pub ip_total_length: Vec<u16>,
     pub ip_id: Vec<u16>,
-    pub ip_df: Vec<bool>,
-    pub ip_mf: Vec<bool>,
-    pub ip_fragment_offset: Vec<bool>,
+    pub ip_flags_rf: Vec<bool>,
+    pub ip_flags_df: Vec<bool>,
+    pub ip_flags_mf: Vec<bool>,
+    pub ip_fragment_offset: Vec<u16>,
     pub ip_ttl: Vec<u8>,
+    pub ip_protocol: Vec<u8>,
+    pub ip_header_checksum: Vec<u16>,
+    pub tcp_src_port: Vec<u16>,
+    pub tcp_dst_port: Vec<u16>,
+    pub tcp_seq_num: Vec<u32>,
+    pub tcp_ack_num: Vec<u32>,
+    pub tcp_data_offset: Vec<u8>,
+    pub tcp_reserved: Vec<u8>,
+    pub tcp_flags_cwr: Vec<bool>,
+    pub tcp_flags_ece: Vec<bool>,
+    pub tcp_flags_urg: Vec<bool>,
+    pub tcp_flags_ack: Vec<bool>,
+    pub tcp_flags_psh: Vec<bool>,
+    pub tcp_flags_rst: Vec<bool>,
+    pub tcp_flags_syn: Vec<bool>,
+    pub tcp_flags_fin: Vec<bool>,
+    pub tcp_window_size: Vec<u16>,
+    pub tcp_checksum: Vec<u16>,
+    pub tcp_urgent_ptr: Vec<u16>,
     pub nb_pkts: u64,
 }
 
 impl FlowFeatures {
     fn new() -> Self {
         FlowFeatures {
+            ip_ihl: vec![],
             ip_dscp: vec![],
             ip_ecn: vec![],
+            ip_total_length: vec![],
             ip_id: vec![],
-            ip_df: vec![],
-            ip_mf: vec![],
+            ip_flags_rf: vec![],
+            ip_flags_df: vec![],
+            ip_flags_mf: vec![],
             ip_fragment_offset: vec![],
             ip_ttl: vec![],
-            nb_pkts: 0,
+            ip_protocol: vec![],
+            ip_header_checksum: vec![],
+            tcp_src_port: vec![],
+            tcp_dst_port: vec![],
+            tcp_seq_num: vec![],
+            tcp_ack_num: vec![],
+            tcp_data_offset: vec![],
+            tcp_reserved: vec![],
+            tcp_flags_cwr: vec![],
+            tcp_flags_ece: vec![],
+            tcp_flags_urg: vec![],
+            tcp_flags_ack: vec![],
+            tcp_flags_psh: vec![],
+            tcp_flags_rst: vec![],
+            tcp_flags_syn: vec![],
+            tcp_flags_fin: vec![],
+            tcp_window_size: vec![],
+            tcp_checksum: vec![],
+            tcp_urgent_ptr: vec![],
         }
     }
 
@@ -182,11 +225,35 @@ impl FlowFeatures {
         if let Ok(eth) = mbuf.parse_to::<Ethernet>() {
             if let Ok(ipv4) = eth.parse_to::<Ipv4>() {
                 if let Ok(tcp) = ipv4.parse_to::<Tcp>() {
+                    self.ip_ihl.push(ipv4.ihl());
                     self.ip_dscp.push(ipv4.dscp());
                     self.ip_ecn.push(ipv4.ecn());
+                    self.ip_total_length.push(ipv4.total_length());
                     self.ip_id.push(ipv4.identification());
-                    self.ip_df
-                        .push((ipv4.flags_to_fragment_offset() >> 14) & 0b1 == 0b1);
+                    self.ip_flags_rf.push(ipv4.rf());
+                    self.ip_flags_df.push(ipv4.df());
+                    self.ip_flags_mf.push(ipv4.mf());
+                    self.ip_fragment_offset.push(ipv4.fragment_offset());
+                    self.ip_ttl.push(ipv4.time_to_live());
+                    self.ip_protocol.push(ipv4.protocol());
+                    self.ip_header_checksum.push(ipv4.header_checksum());
+                    self.tcp_src_port.push(tcp.src_port());
+                    self.tcp_dst_port.push(tcp.dst_port());
+                    self.tcp_seq_num.push(tcp.seq_no());
+                    self.tcp_ack_num.push(tcp.ack_no());
+                    self.tcp_data_offset.push(tcp.data_offset());
+                    self.tcp_reserved.push(tcp.reserved());
+                    self.tcp_flags_cwr.push(tcp.cwr());
+                    self.tcp_flags_ece.push(tcp.ece());
+                    self.tcp_flags_urg.push(tcp.urg());
+                    self.tcp_flags_ack.push(tcp.ack());
+                    self.tcp_flags_psh.push(tcp.psh());
+                    self.tcp_flags_rst.push(tcp.rst());
+                    self.tcp_flags_syn.push(tcp.syn());
+                    self.tcp_flags_fin.push(tcp.fin());
+                    self.tcp_window_size.push(tcp.window());
+                    self.tcp_checksum.push(tcp.checksum());
+                    self.tcp_urgent_ptr.push(tcp.urgent_pointer());
                 }
             }
         }

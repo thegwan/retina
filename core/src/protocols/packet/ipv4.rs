@@ -117,17 +117,10 @@ impl<'a> Ipv4<'a> {
         (self.flags_to_fragment_offset() & IPV4_MF) != 0
     }
 
-<<<<<<< HEAD
     /// Returns the fragment offset in units of 8 bytes.
     #[inline]
     pub fn fragment_offset(&self) -> u16 {
         self.flags_to_fragment_offset() & IPV4_FRAG_OFFSET
-=======
-    /// Returns the fragment offset in bytes.
-    #[inline]
-    pub fn fragment_offset(&self) -> u16 {
-        (self.flags_to_fragment_offset() & IPV4_FRAG_OFFSET) * 8
->>>>>>> ipv4 helpers and connection features start
     }
 
     /// Returns the time to live (TTL) of the packet.
