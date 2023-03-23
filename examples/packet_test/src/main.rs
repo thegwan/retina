@@ -29,6 +29,7 @@ fn main() -> Result<()> {
     let callback = |mbuf: ZcFrame| {
         if let Ok(eth) = mbuf.parse_to::<Ethernet>() {
             if let Ok(ipv4) = eth.parse_to::<Ipv4>() {
+                println!("ihl: {}", ipv4.ihl());
                 println!(
                     "flags_to_fragment_offset: {}",
                     ipv4.flags_to_fragment_offset()
