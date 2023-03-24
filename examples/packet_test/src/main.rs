@@ -1,15 +1,12 @@
 use retina_core::config::load_config;
 use retina_core::protocols::packet::ethernet::Ethernet;
 use retina_core::protocols::packet::ipv4::Ipv4;
-use retina_core::protocols::packet::tcp::Tcp;
 use retina_core::protocols::packet::Packet;
 use retina_core::subscription::ZcFrame;
 use retina_core::Runtime;
 use retina_filtergen::filter;
 
-use std::fs::File;
 use std::path::PathBuf;
-use std::sync::Mutex;
 
 use anyhow::Result;
 use clap::Parser;
