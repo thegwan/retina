@@ -27,7 +27,7 @@ use crate::conntrack::ConnTracker;
 use crate::filter::FilterResult;
 use crate::memory::mbuf::Mbuf;
 use crate::protocols::packet::tcp::{ACK, FIN, RST, SYN};
-use crate::protocols::stream::{ConnParser, Session};
+use crate::protocols::stream::{ConnParser, Session, SessionData};
 use crate::subscription::{Level, Subscribable, Subscription, Trackable};
 
 use serde::ser::{SerializeStruct, Serializer};
@@ -98,6 +98,8 @@ pub struct Connection {
     pub orig: Flow,
     /// Responder flow.
     pub resp: Flow,
+    /// Server name (for TLS connections)
+    pub sni: String,
 }
 
 impl Connection {
@@ -137,9 +139,10 @@ impl Serialize for Connection {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("Connection", 6)?;
+        let mut state = serializer.serialize_struct("Connection", 7)?;
         state.serialize_field("five_tuple", &self.five_tuple)?;
         state.serialize_field("duration", &self.duration)?;
+        state.serialize_field("sni", &self.sni)?;
         state.serialize_field("max_inactivity", &self.max_inactivity)?;
         state.serialize_field("history", &self.history())?;
         state.serialize_field("orig", &self.orig)?;
@@ -150,7 +153,7 @@ impl Serialize for Connection {
 
 impl fmt::Display for Connection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.five_tuple, self.history())?;
+        write!(f, "{}: {}, {}", self.five_tuple, self.sni, self.history())?;
         Ok(())
     }
 }
@@ -198,6 +201,7 @@ pub struct TrackedConnection {
     history: Vec<u8>,
     ctos: Flow,
     stoc: Flow,
+    sni: String,
 }
 
 impl TrackedConnection {
@@ -264,6 +268,7 @@ impl Trackable for TrackedConnection {
             history: Vec::with_capacity(16),
             ctos: Flow::new(),
             stoc: Flow::new(),
+            sni: String::new(),
         }
     }
 
@@ -271,8 +276,10 @@ impl Trackable for TrackedConnection {
         self.update(pdu);
     }
 
-    fn on_match(&mut self, _session: Session, _subscription: &Subscription<Self::Subscribed>) {
-        // do nothing, should stay tracked
+    fn on_match(&mut self, session: Session, _subscription: &Subscription<Self::Subscribed>) {
+        if let SessionData::Tls(tls) = session.data {
+            self.sni = tls.sni().to_string();
+        }
     }
 
     fn post_match(&mut self, pdu: L4Pdu, _subscription: &Subscription<Self::Subscribed>) {
@@ -295,6 +302,7 @@ impl Trackable for TrackedConnection {
                 )
             };
 
+
         let conn = Connection {
             five_tuple: self.five_tuple,
             ts: self.first_seen_ts,
@@ -304,6 +312,7 @@ impl Trackable for TrackedConnection {
             history: self.history.clone(),
             orig: self.ctos.clone(),
             resp: self.stoc.clone(),
+            sni: self.sni.clone(),
         };
         subscription.invoke(conn);
     }

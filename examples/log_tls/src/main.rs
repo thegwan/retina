@@ -1,5 +1,5 @@
 use retina_core::config::load_config;
-use retina_core::subscription::TlsHandshake;
+use retina_core::subscription::Connection;
 use retina_core::Runtime;
 use retina_filtergen::filter;
 
