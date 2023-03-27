@@ -22,13 +22,13 @@ struct Args {
         long,
         parse(from_os_str),
         value_name = "FILE",
-        default_value = "sni.jsonl"
+        default_value = "sni.txt"
     )]
     outfile: PathBuf,
 }
 
-// #[filter("tls and ipv4.addr = 171.64.77.46")]
-#[filter("tls")]
+#[filter("tls and ipv4.addr = 68.65.175.99")]
+//#[filter("tls")]
 fn main() -> Result<()> {
     env_logger::init();
     let args = Args::parse();
@@ -41,6 +41,7 @@ fn main() -> Result<()> {
     let callback = |tls: TlsHandshake| {
         let mut wtr = file.lock().unwrap();
         wtr.write_all(tls.data.sni().as_bytes()).unwrap();
+        wtr.write_all(b"\n").unwrap();
         cnt.fetch_add(1, Ordering::Relaxed);
         println!("{}", tls.data.sni());
     };
