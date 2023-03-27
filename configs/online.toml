@@ -12,7 +12,7 @@ nb_memory_channels = 6
     cache_size = 512
 
 [online]
-    duration = 300
+    duration = 600
     nb_rxd = 32_768
     promiscuous = true
     mtu = 1500
