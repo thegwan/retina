@@ -27,7 +27,7 @@ struct Args {
     outfile: PathBuf,
 }
 
-#[filter("")]
+#[filter("ipv4 and tls")]
 fn main() -> Result<()> {
     env_logger::init();
     let args = Args::parse();
@@ -39,7 +39,7 @@ fn main() -> Result<()> {
 
     let callback = |conn: ConnectionFeatures| {
         if let Ok(serialized) = serde_json::to_string(&conn) {
-            println!("{:?}", conn);
+            println!("{}", conn);
             let mut wtr = file.lock().unwrap();
             wtr.write_all(serialized.as_bytes()).unwrap();
             wtr.write_all(b"\n").unwrap();
