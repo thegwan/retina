@@ -59,7 +59,8 @@ impl Serialize for ConnectionFeatures {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("ConnectionFeatures", 2)?;
+        let mut state = serializer.serialize_struct("ConnectionFeatures", 3)?;
+        state.serialize_field("sni", &self.sni)?;
         state.serialize_field("orig", &self.orig)?;
         state.serialize_field("resp", &self.resp)?;
         state.end()
