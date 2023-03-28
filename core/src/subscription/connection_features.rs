@@ -23,8 +23,10 @@ use crate::protocols::packet::ethernet::Ethernet;
 use crate::protocols::packet::ipv4::Ipv4;
 use crate::protocols::packet::tcp::Tcp;
 use crate::protocols::packet::Packet;
-use crate::protocols::stream::{ConnParser, Session};
+use crate::protocols::stream::{ConnParser, Session, SessionData};
 use crate::subscription::{Level, Subscribable, Subscription, Trackable};
+
+use std::fmt;
 
 use serde::ser::{SerializeStruct, Serializer};
 use serde::Serialize;
@@ -42,6 +44,8 @@ lazy_static! {
 /// connections are interpreted using flow semantics.
 #[derive(Debug)]
 pub struct ConnectionFeatures {
+    /// Server name (for TLS connections)
+    pub sni: String,
     /// Originator flow features.
     pub orig: FlowFeatures,
     /// Responder flow features.
@@ -62,12 +66,13 @@ impl Serialize for ConnectionFeatures {
     }
 }
 
-// impl fmt::Display for ConnectionFeatures {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         write!(f, "{}: {}", self.five_tuple, self.history())?;
-//         Ok(())
-//     }
-// }
+impl fmt::Display for ConnectionFeatures {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}> {}<", self.sni, self.orig.byte_cnt, self.resp.byte_cnt)?;
+        Ok(())
+    }
+}
+
 
 impl Subscribable for ConnectionFeatures {
     type Tracked = TrackedConnectionFeatures;
@@ -104,6 +109,7 @@ impl Subscribable for ConnectionFeatures {
 /// public. Documentation is hidden by default to avoid confusing users.
 #[doc(hidden)]
 pub struct TrackedConnectionFeatures {
+    sni: String,
     ctos: FlowFeatures,
     stoc: FlowFeatures,
 }
@@ -124,6 +130,7 @@ impl Trackable for TrackedConnectionFeatures {
 
     fn new(_five_tuple: FiveTuple) -> Self {
         TrackedConnectionFeatures {
+            sni: String::new(),
             ctos: FlowFeatures::new(),
             stoc: FlowFeatures::new(),
         }
@@ -133,8 +140,10 @@ impl Trackable for TrackedConnectionFeatures {
         self.update(pdu);
     }
 
-    fn on_match(&mut self, _session: Session, _subscription: &Subscription<Self::Subscribed>) {
-        // do nothing, should stay tracked
+    fn on_match(&mut self, session: Session, _subscription: &Subscription<Self::Subscribed>) {
+        if let SessionData::Tls(tls) = session.data {
+            self.sni = tls.sni().to_string();
+        }
     }
 
     fn post_match(&mut self, pdu: L4Pdu, _subscription: &Subscription<Self::Subscribed>) {
@@ -143,6 +152,7 @@ impl Trackable for TrackedConnectionFeatures {
 
     fn on_terminate(&mut self, subscription: &Subscription<Self::Subscribed>) {
         let conn = ConnectionFeatures {
+            sni: self.sni.clone(),
             orig: self.ctos.clone(),
             resp: self.stoc.clone(),
         };
@@ -155,6 +165,7 @@ impl Trackable for TrackedConnectionFeatures {
 pub struct FlowFeatures {
     pub start_tsc: u64,
     pub packet_cnt: u64,
+    pub byte_cnt: u64,
     pub delta_ns: Vec<u64>,
     pub ip_ihl: Vec<u8>,
     pub ip_dscp: Vec<u8>,
@@ -192,6 +203,7 @@ impl FlowFeatures {
         FlowFeatures {
             start_tsc: unsafe { rte_rdtsc() },
             packet_cnt: 0,
+            byte_cnt: 0,
             delta_ns: vec![],
             ip_ihl: vec![],
             ip_dscp: vec![],
@@ -227,14 +239,15 @@ impl FlowFeatures {
 
     #[inline]
     fn insert_segment(&mut self, segment: L4Pdu) {
-        println!("{}", unsafe { rte_get_tsc_hz() });
-        self.packet_cnt += 1;
         let mbuf = segment.mbuf_ref();
         if let Ok(eth) = mbuf.parse_to::<Ethernet>() {
             let curr_tsc = unsafe { rte_rdtsc() };
             self.delta_ns
                 .push(((curr_tsc - self.start_tsc) as f64 / *TSC_HZ * 1e9) as u64);
             if let Ok(ipv4) = eth.parse_to::<Ipv4>() {
+                self.packet_cnt += 1;
+                self.byte_cnt += ipv4.total_length() as u64;
+
                 self.ip_ihl.push(ipv4.ihl());
                 self.ip_dscp.push(ipv4.dscp());
                 self.ip_ecn.push(ipv4.ecn());
