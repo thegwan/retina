@@ -16,19 +16,19 @@ nb_memory_channels = 6
     nb_rxd = 32_768
     promiscuous = true
     mtu = 1500
-    hardware_assist = true
+    hardware_assist = false
 
     [online.monitor.display]
         throughput = true
         mempool_usage = true
-        port_stats = ["rx_good_packets",
-                        "rx_good_bytes",
-                        "rx_phy_packets",
-                        "rx_phy_bytes",
-                        "rx_mbuf_allocation_errors", 
-                        "rx_phy_discard_packets", 
-                        "rx_missed_errors",
-                        ]
+#        port_stats = ["rx_good_packets",
+#                        "rx_good_bytes",
+#                        "rx_phy_packets",
+#                        "rx_phy_bytes",
+#                        "rx_mbuf_allocation_errors", 
+#                        "rx_phy_discard_packets", 
+#                        "rx_missed_errors",
+#                        ]
     [online.monitor.log]
         directory = "./log"
         interval = 1000
@@ -40,6 +40,10 @@ nb_memory_channels = 6
 #    [[online.ports]]
 #        device = "0000:d8:00.0"
 #        cores = [9,10,11,12,13,14,15,16]
+    
+    [online.ports.sink]
+        core = 9
+        nb_buckets = 8   # drops 50% of 4-tuples
 
 [conntrack]
     max_connections = 10_000_000
