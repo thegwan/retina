@@ -16,7 +16,7 @@ nb_memory_channels = 6
     nb_rxd = 32_768
     promiscuous = true
     mtu = 1500
-    hardware_assist = true
+    hardware_assist = false
 
     [online.monitor.display]
         throughput = true
@@ -41,9 +41,9 @@ nb_memory_channels = 6
 #        device = "0000:d8:00.0"
 #        cores = [9,10,11,12,13,14,15,16]
     
-#    [online.ports.sink]
-#        core = 9
-#        nb_buckets = 256   # drops 50% of 4-tuples
+    [online.ports.sink]
+        core = 9
+        nb_buckets = 8
 
 [conntrack]
     max_connections = 10_000_000
