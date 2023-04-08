@@ -38,7 +38,12 @@ fn main() -> Result<()> {
     let cnt = AtomicUsize::new(0);
 
     let callback = |conn: Connection| {
-        println!("{}; pkts: {}, bytes: {}", conn, conn.total_pkts(), conn.total_bytes());
+        println!(
+            "{}; pkts: {}, bytes: {}",
+            conn,
+            conn.total_pkts(),
+            conn.total_bytes()
+        );
         if let Ok(serialized) = serde_json::to_string(&conn) {
             let mut wtr = file.lock().unwrap();
             wtr.write_all(serialized.as_bytes()).unwrap();

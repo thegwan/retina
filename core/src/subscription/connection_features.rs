@@ -69,11 +69,14 @@ impl Serialize for ConnectionFeatures {
 
 impl fmt::Display for ConnectionFeatures {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}> {}<", self.sni, self.orig.byte_cnt, self.resp.byte_cnt)?;
+        write!(
+            f,
+            "{}: {}> {}<",
+            self.sni, self.orig.byte_cnt, self.resp.byte_cnt
+        )?;
         Ok(())
     }
 }
-
 
 impl Subscribable for ConnectionFeatures {
     type Tracked = TrackedConnectionFeatures;
