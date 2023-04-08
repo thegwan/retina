@@ -302,7 +302,6 @@ impl Trackable for TrackedConnection {
                 )
             };
 
-
         let conn = Connection {
             five_tuple: self.five_tuple,
             ts: self.first_seen_ts,
