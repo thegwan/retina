@@ -12,6 +12,7 @@ members = [
     "examples/log_tls",
     "examples/packet_test",
     "examples/pcap_dump",
+    "examples/serve_ml",
     "examples/spin",
     "examples/video",
     "filtergen",
