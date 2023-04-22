@@ -28,8 +28,10 @@ use crate::subscription::{Level, Subscribable, Subscription, Trackable};
 
 use std::fmt;
 
+use anyhow::Result;
 use serde::ser::{SerializeStruct, Serializer};
 use serde::Serialize;
+use statrs::statistics::{MeanN, Median, Min, Max, VarianceN};
 
 use lazy_static::lazy_static;
 
@@ -52,7 +54,9 @@ pub struct ConnectionFeatures {
     pub resp: FlowFeatures,
 }
 
-impl ConnectionFeatures {}
+impl ConnectionFeatures {
+    
+}
 
 impl Serialize for ConnectionFeatures {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -202,6 +206,61 @@ pub struct FlowFeatures {
     pub tcp_urgent_ptr: Vec<u16>,
 }
 
+const PACKET_FT_CLASSES: [&'static str; 30] = [
+    "packet_iat",
+    "ip_ihl",
+    "ip_dscp",
+    "ip_ecn",
+    "ip_total_length",
+    "ip_id",
+    "ip_flags_rf",
+    "ip_flags_df",
+    "ip_flags_mf",
+    "ip_fragment_offset",
+    "ip_ttl",
+    "ip_protocol",
+    "ip_header_checksum",
+    "tcp_src_port",
+    "tcp_dst_port",
+    "tcp_seq_num",
+    "tcp_ack_num",
+    "tcp_data_offset",
+    "tcp_reserved",
+    "tcp_flags_cwr",
+    "tcp_flags_ece",
+    "tcp_flags_urg",
+    "tcp_flags_ack",
+    "tcp_flags_psh",
+    "tcp_flags_rst",
+    "tcp_flags_syn",
+    "tcp_flags_fin",
+    "tcp_window_size",
+    "tcp_checksum",
+    "tcp_urgent_ptr",
+];
+
+const FLOW_FT_CLASSES: [&'static str; 4] = [
+    "packet_cnt",
+    "byte_cnt",
+    "packet_throughput",
+    "byte_throughput",
+];
+
+const AGGREGATORS: [&'static str; 12] = [
+    "min", 
+    "q1", 
+    "med", 
+    "q3", 
+    "max", 
+    "mean", 
+    "std", 
+    "skew", 
+    "kurt", 
+    "sum", 
+    "dist",
+    "first",
+];
+
 impl FlowFeatures {
     fn new() -> Self {
         FlowFeatures {
@@ -239,6 +298,17 @@ impl FlowFeatures {
             tcp_checksum: vec![],
             tcp_urgent_ptr: vec![],
         }
+    }
+
+    fn get_features(&self, n_pkts: Option<usize>) -> Result<()> {
+        let mut features: Vec<f32> = vec![];
+        for ft_class in PACKET_FT_CLASSES.iter() {
+            for agg in AGGREGATORS.iter() {
+                let key = format!("{ft_class}_{agg}");
+
+            }
+        }
+        Ok(())
     }
 
     #[inline]
@@ -286,4 +356,8 @@ impl FlowFeatures {
             }
         }
     }
+}
+
+fn aggregate(agg: &str, raw_features: Vec<f32>) -> f32 {
+    return 0.0
 }
