@@ -27,13 +27,18 @@ use crate::protocols::stream::{ConnParser, Session, SessionData};
 use crate::subscription::{Level, Subscribable, Subscription, Trackable};
 
 use std::fmt;
+use std::collections::HashSet;
+use std::collections::HashMap;
+use std::ops::Index;
 
 use anyhow::Result;
 use serde::ser::{SerializeStruct, Serializer};
 use serde::Serialize;
-use statrs::statistics::{MeanN, Median, Min, Max, VarianceN};
+use statrs::statistics::{Min, Max, OrderStatistics, Distribution};
+use statrs::statistics::Data;
 
 use lazy_static::lazy_static;
+
 
 lazy_static! {
     static ref TSC_HZ: f64 = unsafe { rte_get_tsc_hz() as f64 };
@@ -171,39 +176,10 @@ impl Trackable for TrackedConnectionFeatures {
 /// A uni-directional flow.
 #[derive(Debug, Clone, Serialize)]
 pub struct FlowFeatures {
-    pub start_tsc: u64,
-    pub packet_cnt: u64,
-    pub byte_cnt: u64,
-    pub delta_ns: Vec<u64>,
-    pub ip_ihl: Vec<u8>,
-    pub ip_dscp: Vec<u8>,
-    pub ip_ecn: Vec<u8>,
-    pub ip_total_length: Vec<u16>,
-    pub ip_id: Vec<u16>,
-    pub ip_flags_rf: Vec<bool>,
-    pub ip_flags_df: Vec<bool>,
-    pub ip_flags_mf: Vec<bool>,
-    pub ip_fragment_offset: Vec<u16>,
-    pub ip_ttl: Vec<u8>,
-    pub ip_protocol: Vec<u8>,
-    pub ip_header_checksum: Vec<u16>,
-    pub tcp_src_port: Vec<u16>,
-    pub tcp_dst_port: Vec<u16>,
-    pub tcp_seq_num: Vec<u32>,
-    pub tcp_ack_num: Vec<u32>,
-    pub tcp_data_offset: Vec<u8>,
-    pub tcp_reserved: Vec<u8>,
-    pub tcp_flags_cwr: Vec<bool>,
-    pub tcp_flags_ece: Vec<bool>,
-    pub tcp_flags_urg: Vec<bool>,
-    pub tcp_flags_ack: Vec<bool>,
-    pub tcp_flags_psh: Vec<bool>,
-    pub tcp_flags_rst: Vec<bool>,
-    pub tcp_flags_syn: Vec<bool>,
-    pub tcp_flags_fin: Vec<bool>,
-    pub tcp_window_size: Vec<u16>,
-    pub tcp_checksum: Vec<u16>,
-    pub tcp_urgent_ptr: Vec<u16>,
+    pub start_tsc: u32,
+    pub packet_cnt: u32,
+    pub byte_cnt: u32,
+    pub pkt_data: HashMap<&'static str, Vec<u32>>,
 }
 
 const PACKET_FT_CLASSES: [&'static str; 30] = [
@@ -264,100 +240,98 @@ const AGGREGATORS: [&'static str; 12] = [
 impl FlowFeatures {
     fn new() -> Self {
         FlowFeatures {
-            start_tsc: unsafe { rte_rdtsc() },
+            start_tsc: unsafe { rte_rdtsc() } as u32,
             packet_cnt: 0,
             byte_cnt: 0,
-            delta_ns: vec![],
-            ip_ihl: vec![],
-            ip_dscp: vec![],
-            ip_ecn: vec![],
-            ip_total_length: vec![],
-            ip_id: vec![],
-            ip_flags_rf: vec![],
-            ip_flags_df: vec![],
-            ip_flags_mf: vec![],
-            ip_fragment_offset: vec![],
-            ip_ttl: vec![],
-            ip_protocol: vec![],
-            ip_header_checksum: vec![],
-            tcp_src_port: vec![],
-            tcp_dst_port: vec![],
-            tcp_seq_num: vec![],
-            tcp_ack_num: vec![],
-            tcp_data_offset: vec![],
-            tcp_reserved: vec![],
-            tcp_flags_cwr: vec![],
-            tcp_flags_ece: vec![],
-            tcp_flags_urg: vec![],
-            tcp_flags_ack: vec![],
-            tcp_flags_psh: vec![],
-            tcp_flags_rst: vec![],
-            tcp_flags_syn: vec![],
-            tcp_flags_fin: vec![],
-            tcp_window_size: vec![],
-            tcp_checksum: vec![],
-            tcp_urgent_ptr: vec![],
+            pkt_data: PACKET_FT_CLASSES.into_iter().map(|key| (key, vec![])).collect(),
         }
     }
 
-    fn get_features(&self, n_pkts: Option<usize>) -> Result<()> {
-        let mut features: Vec<f32> = vec![];
+    fn get_features(&self, n_pkts: Option<usize>) -> Vec<f64> {
+        let mut features: Vec<f64> = vec![];
+        
         for ft_class in PACKET_FT_CLASSES.iter() {
+            // if ft_class == "packet_iat" {
+            //     let raw_features = get_iat()
+            // }
+            let raw_features = self.pkt_data.get(ft_class).unwrap();
+            let n_pkts = n_pkts.unwrap_or(raw_features.len());
             for agg in AGGREGATORS.iter() {
                 let key = format!("{ft_class}_{agg}");
-
+                let value = aggregate(agg, &raw_features[0..n_pkts]);
+                features.push(value);
             }
         }
-        Ok(())
+        features
     }
 
     #[inline]
     fn insert_segment(&mut self, segment: L4Pdu) {
         let mbuf = segment.mbuf_ref();
         if let Ok(eth) = mbuf.parse_to::<Ethernet>() {
-            let curr_tsc = unsafe { rte_rdtsc() };
-            self.delta_ns
-                .push(((curr_tsc - self.start_tsc) as f64 / *TSC_HZ * 1e9) as u64);
+            let curr_tsc = unsafe { rte_rdtsc() } as u32;
+            let delta_ns = ((curr_tsc - self.start_tsc) as f64 / *TSC_HZ * 1e9) as u32;
+            self.pkt_data.get_mut("delta_ns").unwrap().push(delta_ns);
             if let Ok(ipv4) = eth.parse_to::<Ipv4>() {
                 self.packet_cnt += 1;
-                self.byte_cnt += ipv4.total_length() as u64;
-
-                self.ip_ihl.push(ipv4.ihl());
-                self.ip_dscp.push(ipv4.dscp());
-                self.ip_ecn.push(ipv4.ecn());
-                self.ip_total_length.push(ipv4.total_length());
-                self.ip_id.push(ipv4.identification());
-                self.ip_flags_rf.push(ipv4.rf());
-                self.ip_flags_df.push(ipv4.df());
-                self.ip_flags_mf.push(ipv4.mf());
-                self.ip_fragment_offset.push(ipv4.fragment_offset());
-                self.ip_ttl.push(ipv4.time_to_live());
-                self.ip_protocol.push(ipv4.protocol());
-                self.ip_header_checksum.push(ipv4.header_checksum());
+                self.byte_cnt += ipv4.total_length() as u32;
+                self.pkt_data.get_mut("ip_ihl").unwrap().push(ipv4.ihl().into());
+                self.pkt_data.get_mut("ip_dscp").unwrap().push(ipv4.dscp().into());
+                self.pkt_data.get_mut("ip_ecn").unwrap().push(ipv4.ecn().into());
+                self.pkt_data.get_mut("ip_total_length").unwrap().push(ipv4.total_length().into());
+                self.pkt_data.get_mut("ip_id").unwrap().push(ipv4.identification().into());
+                self.pkt_data.get_mut("ip_flags_rf").unwrap().push(ipv4.rf().into());
+                self.pkt_data.get_mut("ip_flags_df").unwrap().push(ipv4.df().into());
+                self.pkt_data.get_mut("ip_flags_mf").unwrap().push(ipv4.mf().into());
+                self.pkt_data.get_mut("ip_fragment_offset").unwrap().push(ipv4.fragment_offset().into());
+                self.pkt_data.get_mut("ip_ttl").unwrap().push(ipv4.time_to_live().into());
+                self.pkt_data.get_mut("ip_protocol").unwrap().push(ipv4.protocol().into());
+                self.pkt_data.get_mut("ip_header_checksum").unwrap().push(ipv4.header_checksum().into());
                 if let Ok(tcp) = ipv4.parse_to::<Tcp>() {
-                    self.tcp_src_port.push(tcp.src_port());
-                    self.tcp_dst_port.push(tcp.dst_port());
-                    self.tcp_seq_num.push(tcp.seq_no());
-                    self.tcp_ack_num.push(tcp.ack_no());
-                    self.tcp_data_offset.push(tcp.data_offset());
-                    self.tcp_reserved.push(tcp.reserved());
-                    self.tcp_flags_cwr.push(tcp.cwr());
-                    self.tcp_flags_ece.push(tcp.ece());
-                    self.tcp_flags_urg.push(tcp.urg());
-                    self.tcp_flags_ack.push(tcp.ack());
-                    self.tcp_flags_psh.push(tcp.psh());
-                    self.tcp_flags_rst.push(tcp.rst());
-                    self.tcp_flags_syn.push(tcp.syn());
-                    self.tcp_flags_fin.push(tcp.fin());
-                    self.tcp_window_size.push(tcp.window());
-                    self.tcp_checksum.push(tcp.checksum());
-                    self.tcp_urgent_ptr.push(tcp.urgent_pointer());
+                    self.pkt_data.get_mut("tcp_src_port").unwrap().push(tcp.src_port().into());
+                    self.pkt_data.get_mut("tcp_dst_port").unwrap().push(tcp.dst_port().into());
+                    self.pkt_data.get_mut("tcp_seq_num").unwrap().push(tcp.seq_no().into());
+                    self.pkt_data.get_mut("tcp_ack_num").unwrap().push(tcp.ack_no().into());
+                    self.pkt_data.get_mut("tcp_data_offset").unwrap().push(tcp.data_offset().into());
+                    self.pkt_data.get_mut("tcp_reserved").unwrap().push(tcp.reserved().into());
+                    self.pkt_data.get_mut("tcp_flags_cwr").unwrap().push(tcp.cwr().into());
+                    self.pkt_data.get_mut("tcp_flags_ece").unwrap().push(tcp.ece().into());
+                    self.pkt_data.get_mut("tcp_flags_urg").unwrap().push(tcp.urg().into());
+                    self.pkt_data.get_mut("tcp_flags_ack").unwrap().push(tcp.ack().into());
+                    self.pkt_data.get_mut("tcp_flags_psh").unwrap().push(tcp.psh().into());
+                    self.pkt_data.get_mut("tcp_flags_rst").unwrap().push(tcp.rst().into());
+                    self.pkt_data.get_mut("tcp_flags_syn").unwrap().push(tcp.syn().into());
+                    self.pkt_data.get_mut("tcp_flags_fin").unwrap().push(tcp.fin().into());
+                    self.pkt_data.get_mut("tcp_window_size").unwrap().push(tcp.window().into());
+                    self.pkt_data.get_mut("tcp_checksum").unwrap().push(tcp.checksum().into());
+                    self.pkt_data.get_mut("tcp_urgent_ptr").unwrap().push(tcp.urgent_pointer().into());
                 }
             }
         }
     }
 }
 
-fn aggregate(agg: &str, raw_features: Vec<f32>) -> f32 {
-    return 0.0
+fn aggregate(agg: &str, raw_features: &[u32]) -> f64 {
+    if raw_features.is_empty() {
+        return 0.0;
+    }
+    let mut data: Data<Vec<f64>> = Data::new(raw_features.iter().map(|&x| x as f64).collect());
+    match agg {
+        "min" => data.min(),
+        "q1" => data.lower_quartile(),
+        "med" => data.median(),
+        "q3" => data.upper_quartile(),
+        "max" => data.max(),
+        "mean" => data.mean().unwrap_or(0.0),
+        "std" => data.std_dev().unwrap_or(0.0),
+        "skew" => data.skewness().unwrap_or(0.0),
+        "kurt" => -1.2,  // need another crate
+        "sum" => raw_features.iter().sum::<u32>() as f64,
+        "dist" => {
+            let unique: HashSet<u32> = raw_features.iter().cloned().collect();
+            unique.len() as f64
+        }
+        "first" => *data.index(0),
+        _ => 0.0
+    }
 }
