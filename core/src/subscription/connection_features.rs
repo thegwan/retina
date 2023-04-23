@@ -185,6 +185,7 @@ pub struct FlowFeatures {
     pub start_tsc: u32,
     pub packet_cnt: u32,
     pub byte_cnt: u32,
+    pub delta_ns: Vec<u32>,
     pub pkt_data: HashMap<&'static str, Vec<u32>>,
 }
 
@@ -238,6 +239,7 @@ impl FlowFeatures {
             start_tsc: unsafe { rte_rdtsc() } as u32,
             packet_cnt: 0,
             byte_cnt: 0,
+            delta_ns: vec![],
             pkt_data: PACKET_FT_CLASSES
                 .into_iter()
                 .map(|key| (key, vec![]))
@@ -262,7 +264,7 @@ impl FlowFeatures {
         features.push(n_bytes as f64);
         let mut packet_throughput = 0.0;
         let mut byte_throughput = 0.0;
-        let delta_ns = &self.pkt_data.get("delta_ns").unwrap()[..n_pkts];
+        let delta_ns = &self.delta_ns[..n_pkts];
         if delta_ns.len() > 0 {
             let duration = delta_ns[delta_ns.len() - 1] - delta_ns[0];
             if duration > 0 {
@@ -275,10 +277,9 @@ impl FlowFeatures {
 
         for ft_class in PACKET_FT_CLASSES.iter() {
             if ft_class.to_string() == "packet_iat" {
-                let raw_features = self.get_iat(n_pkts);
                 for agg in AGGREGATORS.iter() {
                     let _key = format!("{ft_class}_{agg}");
-                    let value = aggregate(agg, &raw_features[0..n_pkts]);
+                    let value = aggregate(agg, &self.get_iat(n_pkts)[..]);
                     features.push(value);
                 }
             } else {
@@ -294,8 +295,11 @@ impl FlowFeatures {
     }
 
     fn get_iat(&self, n_pkts: usize) -> Vec<u32> {
-        let delta_ns = &self.pkt_data.get("delta_ns").unwrap()[..n_pkts];
+        let delta_ns = &self.delta_ns[..n_pkts];
         let mut iat = vec![];
+        if delta_ns.is_empty() {
+            return iat;
+        }
         for i in 0..delta_ns.len() - 1 {
             iat.push(delta_ns[i + 1] - delta_ns[i]);
         }
@@ -307,8 +311,9 @@ impl FlowFeatures {
         let mbuf = segment.mbuf_ref();
         if let Ok(eth) = mbuf.parse_to::<Ethernet>() {
             let curr_tsc = unsafe { rte_rdtsc() } as u32;
-            let delta_ns = ((curr_tsc - self.start_tsc) as f64 / *TSC_HZ * 1e9) as u32;
-            self.pkt_data.get_mut("delta_ns").unwrap().push(delta_ns);
+            let delta_ns =
+                ((curr_tsc.saturating_sub(self.start_tsc)) as f64 / *TSC_HZ * 1e9) as u32;
+            self.delta_ns.push(delta_ns);
             if let Ok(ipv4) = eth.parse_to::<Ipv4>() {
                 self.packet_cnt += 1;
                 self.byte_cnt += ipv4.total_length() as u32;
@@ -457,7 +462,7 @@ fn aggregate(agg: &str, raw_features: &[u32]) -> f64 {
             .unwrap();
             (arr.kurtosis().unwrap() - 3.0) as f64
         }
-        "sum" => raw_features.iter().sum::<u32>() as f64,
+        "sum" => raw_features.iter().map(|&x| x as u64).sum::<u64>() as f64,
         "dist" => {
             let unique: HashSet<u32> = raw_features.iter().cloned().collect();
             unique.len() as f64

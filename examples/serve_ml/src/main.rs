@@ -29,7 +29,7 @@ struct Args {
 }
 
 //#[filter("ipv4 and tls and (tls.sni ~ 'nflxvideo\\.net$' or tls.sni ~ 'row\\.aiv-cdn\\.net$' or tls.sni ~ 'media\\.dssott\\.com$' or tls.sni ~ 'vod-adaptive\\.akamaized\\.net$' or tls.sni ~ 'hls\\.ttvnw\\.net$' or tls.sni ~ 'aoc\\.tv\\.apple\\.com$' or tls.sni ~ 'airspace-.*\\.cbsivideo\\.com$' or tls.sni ~ 'prod\\.gccrunchyroll\\.com$' or tls.sni ~ 'vrv\\.akamaized\\.net$')")]
-#[filter("ipv4 and tls")]
+#[filter("ipv4 and tcp")]
 fn main() -> Result<()> {
     env_logger::init();
     let args = Args::parse();
@@ -42,6 +42,8 @@ fn main() -> Result<()> {
 
     let callback = |conn: ConnectionFeatures| {
         let features = conn.features(None);
+        let instance = DenseMatrix::new(1, features.len(), features, false);
+        cnt.fetch_add(1, Ordering::Relaxed);
         // if let Ok(serialized) = serde_json::to_string(&conn) {
         //     // println!("{}", conn);
         //     let mut wtr = file.lock().unwrap();
@@ -55,7 +57,7 @@ fn main() -> Result<()> {
 
     // let mut wtr = file.lock().unwrap();
     // wtr.flush()?;
-    // println!("Done. Logged {:?} connections to {:?}", cnt, &args.outfile);
+    println!("Done. Logged {:?} connections", cnt);
     Ok(())
 }
 
