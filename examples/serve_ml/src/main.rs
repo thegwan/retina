@@ -41,7 +41,7 @@ fn main() -> Result<()> {
     let clf = load_clf(&args.model_file)?;
 
     let callback = |conn: ConnectionFeatures| {
-        
+        let features = conn.features(None);
         // if let Ok(serialized) = serde_json::to_string(&conn) {
         //     // println!("{}", conn);
         //     let mut wtr = file.lock().unwrap();
