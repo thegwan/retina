@@ -4,16 +4,16 @@ use retina_core::Runtime;
 use retina_filtergen::filter;
 
 use std::fs::File;
-use std::io::{BufWriter, Write};
+// use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Mutex;
+// use std::sync::Mutex;
 
 use anyhow::Result;
 use clap::Parser;
 
-use smartcore::dataset::Dataset;
-use smartcore::linalg::basic::arrays::{Array, Array2};
+// use smartcore::dataset::Dataset;
+// use smartcore::linalg::basic::arrays::{Array, Array2};
 use smartcore::linalg::basic::matrix::DenseMatrix;
 // use smartcore::metrics::accuracy;
 // use smartcore::model_selection::train_test_split;
@@ -35,28 +35,24 @@ fn main() -> Result<()> {
     let args = Args::parse();
     let config = load_config(&args.config);
 
-    // Use `BufWriter` to improve the speed of repeated write calls to the same file.
-    // let file = Mutex::new(BufWriter::new(File::create(&args.outfile)?));
     let cnt = AtomicUsize::new(0);
     let clf = load_clf(&args.model_file)?;
 
     let callback = |conn: ConnectionFeatures| {
-        let features = conn.features(None);
+        //println!("{}", conn.sni);
+        let features = conn
+            .features(None)
+            .iter()
+            .map(|&x| x as f32)
+            .collect::<Vec<f32>>();
         let instance = DenseMatrix::new(1, features.len(), features, false);
+        let pred = clf.predict(&instance).unwrap();
+        //println!("{:?}", pred);
         cnt.fetch_add(1, Ordering::Relaxed);
-        // if let Ok(serialized) = serde_json::to_string(&conn) {
-        //     // println!("{}", conn);
-        //     let mut wtr = file.lock().unwrap();
-        //     wtr.write_all(serialized.as_bytes()).unwrap();
-        //     wtr.write_all(b"\n").unwrap();
-        //     cnt.fetch_add(1, Ordering::Relaxed);
-        // }
     };
     let mut runtime = Runtime::new(config, filter, callback)?;
     runtime.run();
 
-    // let mut wtr = file.lock().unwrap();
-    // wtr.flush()?;
     println!("Done. Logged {:?} connections", cnt);
     Ok(())
 }
