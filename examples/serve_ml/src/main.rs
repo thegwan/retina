@@ -8,6 +8,7 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 // use std::sync::Mutex;
+use std::time::Instant;
 
 use anyhow::Result;
 use clap::Parser;
@@ -40,13 +41,17 @@ fn main() -> Result<()> {
 
     let callback = |conn: ConnectionFeatures| {
         //println!("{}", conn.sni);
+        let start = Instant::now();
         let features = conn
             .features(None)
             .iter()
             .map(|&x| x as f32)
             .collect::<Vec<f32>>();
+        println!("get features: {:?}", start.elapsed());
         let instance = DenseMatrix::new(1, features.len(), features, false);
+        let start = Instant::now();
         let pred = clf.predict(&instance).unwrap();
+        println!("predict: {:?}", start.elapsed());
         //println!("{:?}", pred);
         cnt.fetch_add(1, Ordering::Relaxed);
     };
