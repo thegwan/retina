@@ -116,4 +116,8 @@ impl Trackable for TrackedDns {
     fn post_match(&mut self, _pdu: L4Pdu, _subscription: &Subscription<Self::Subscribed>) {}
 
     fn on_terminate(&mut self, _subscription: &Subscription<Self::Subscribed>) {}
+
+    fn early_terminate(&self) -> bool {
+        false
+    }
 }

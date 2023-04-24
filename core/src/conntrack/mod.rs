@@ -118,6 +118,10 @@ where
                     if let Ok(mut conn) = conn {
                         let pdu = L4Pdu::new(mbuf, ctxt, true);
                         conn.info.consume_pdu(pdu, subscription, &self.registry);
+                        if conn.terminated() {
+                            conn.terminate(subscription);
+                            return;
+                        }
                         if conn.state() != ConnState::Remove {
                             self.timerwheel.insert(
                                 &conn_id,

@@ -142,4 +142,8 @@ impl Trackable for TrackedFrame {
     }
 
     fn on_terminate(&mut self, _subscription: &Subscription<Self::Subscribed>) {}
+
+    fn early_terminate(&self) -> bool {
+        false
+    }
 }

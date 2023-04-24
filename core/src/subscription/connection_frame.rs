@@ -133,4 +133,8 @@ impl Trackable for TrackedConnectionFrame {
             subscription.invoke(frame);
         });
     }
+
+    fn early_terminate(&self) -> bool {
+        false
+    }
 }

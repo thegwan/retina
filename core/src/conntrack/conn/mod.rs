@@ -116,12 +116,13 @@ where
         self.info.state
     }
 
-    /// Returns `true` if the connection has been naturally terminated.
+    /// Returns `true` if the connection has been terminated.
     pub(super) fn terminated(&self) -> bool {
-        match &self.l4conn {
-            L4Conn::Tcp(tcp_conn) => tcp_conn.is_terminated(),
-            L4Conn::Udp(_udp_conn) => false,
-        }
+        self.info.sdata.early_terminate()
+            || match &self.l4conn {
+                L4Conn::Tcp(tcp_conn) => tcp_conn.is_terminated(),
+                L4Conn::Udp(_udp_conn) => false,
+            }
     }
 
     /// Returns the `true` if the packet represented by `ctxt` is in the direction of originator ->

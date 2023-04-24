@@ -307,6 +307,10 @@ impl Trackable for TrackedConnection {
         };
         subscription.invoke(conn);
     }
+
+    fn early_terminate(&self) -> bool {
+        self.ctos.nb_pkts + self.stoc.nb_pkts >= 8
+    }
 }
 
 /// A uni-directional flow.

@@ -84,6 +84,9 @@ pub trait Trackable {
 
     /// Update tracked subscription data on connection termination.
     fn on_terminate(&mut self, subscription: &Subscription<Self::Subscribed>);
+
+    /// Returns `true` if Trackable should be terminated early.
+    fn early_terminate(&self) -> bool;
 }
 
 /// A request for a callback on a subset of traffic specified by the filter.
