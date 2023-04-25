@@ -23,7 +23,7 @@ where
     pub(crate) rxqueues: Vec<RxQueue>,
     pub(crate) filter: Filter,
     pub(crate) conntrack: ConnTrackConfig,
-    pub(crate) subscription: Arc<Mutex<Subscription<'a, S>>>,
+    pub(crate) subscription: Arc<Subscription<'a, S>>,
     pub(crate) is_running: Arc<AtomicBool>,
 }
 
@@ -36,7 +36,7 @@ where
         rxqueues: Vec<RxQueue>,
         filter: Filter,
         conntrack: ConnTrackConfig,
-        subscription: Arc<Mutex<Subscription<'a, S>>>,
+        subscription: Arc<Subscription<'a, S>>,
         is_running: Arc<AtomicBool>,
     ) -> Self {
         RxCore {
@@ -90,7 +90,6 @@ where
         let registry = ParserRegistry::build::<S>(&self.filter).expect("Unable to build registry");
         log::debug!("{:#?}", registry);
         let mut conn_table = ConnTracker::<S::Tracked>::new(config, registry);
-        let mut subscription = self.subscription.lock().unwrap();
         while self.is_running.load(Ordering::Relaxed) {
             for rxqueue in self.rxqueues.iter() {
                 let mbufs: Vec<Mbuf> = self.rx_burst(rxqueue, 32);
@@ -106,14 +105,14 @@ where
                     // );
                     nb_pkts += 1;
                     nb_bytes += mbuf.data_len() as u64;
-                    S::process_packet(mbuf, &mut subscription, &mut conn_table);
+                    S::process_packet(mbuf, &mut self.subscription, &mut conn_table);
                 }
             }
-            conn_table.check_inactive(&mut subscription);
+            conn_table.check_inactive(&mut self.subscription);
         }
 
         // // Deliver remaining data in table from unfinished connections
-        conn_table.drain(&mut subscription);
+        conn_table.drain(&mut self.subscription);
 
         log::info!(
             "Core {} total recv from {}: {} pkts, {} bytes",

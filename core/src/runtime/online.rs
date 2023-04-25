@@ -34,7 +34,7 @@ where
         options: OnlineOptions,
         mempools: &mut BTreeMap<SocketId, Mempool>,
         filter: Filter,
-        subscription: Arc<Mutex<Subscription<'a, S>>>,
+        subscription: Arc<Subscription<'a, S>>,
     ) -> Self {
         // Set up signal handler
         let is_running = Arc::new(AtomicBool::new(true));

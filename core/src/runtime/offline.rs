@@ -21,7 +21,7 @@ where
 {
     pub(crate) mempool_name: String,
     pub(crate) filter: Filter,
-    pub(crate) subscription: Arc<Mutex<Subscription<'a, S>>>,
+    pub(crate) subscription: Arc<Subscription<'a, S>>,
     pub(crate) options: OfflineOptions,
 }
 
@@ -33,7 +33,7 @@ where
         options: OfflineOptions,
         mempools: &BTreeMap<SocketId, Mempool>,
         filter: Filter,
-        subscription: Arc<Mutex<Subscription<'a, S>>>,
+        subscription: Arc<Subscription<'a, S>>,
     ) -> Self {
         let core_id = CoreId(unsafe { dpdk::rte_lcore_id() } as u32);
         let mempool_name = mempools
@@ -63,7 +63,6 @@ where
         log::debug!("{:#?}", registry);
         let mut stream_table = ConnTracker::<S::Tracked>::new(config, registry);
 
-        let mut subscription = self.subscription.lock().unwrap();
         let mempool_raw = self.get_mempool_raw();
         let pcap = self.options.offline.pcap.as_str();
         let mut cap = Capture::from_file(pcap).expect("Error opening pcap. Aborting.");
@@ -77,11 +76,11 @@ where
             nb_pkts += 1;
             nb_bytes += mbuf.data_len() as u64;
 
-            S::process_packet(mbuf, &mut subscription, &mut stream_table);
+            S::process_packet(mbuf, &mut self.subscription, &mut stream_table);
         }
 
         // // Deliver remaining data in table
-        stream_table.drain(&mut subscription);
+        stream_table.drain(&mut self.subscription);
         let cpu_time = start.elapsed();
         println!("Processed: {} pkts, {} bytes", nb_pkts, nb_bytes);
         println!("CPU time: {:?}ms", cpu_time.as_millis());
