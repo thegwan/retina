@@ -58,9 +58,7 @@ pub struct ConnFeatures {
     pub features: Vec<f64>,
 }
 
-impl ConnFeatures {
-   
-}
+impl ConnFeatures {}
 
 impl Serialize for ConnFeatures {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
