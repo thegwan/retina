@@ -1,13 +1,14 @@
 use retina_core::config::load_config;
+use retina_core::rte_lcore_id;
 use retina_core::subscription::ConnFeatures;
-use retina_core::Runtime;
+use retina_core::{rte_rdtsc, Runtime};
 use retina_filtergen::filter;
 
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Mutex;
+use std::sync::{Arc,Mutex};
 
 use anyhow::Result;
 use clap::Parser;
@@ -38,12 +39,34 @@ fn main() -> Result<()> {
     let file = Mutex::new(BufWriter::new(File::create(&args.outfile)?));
     let cnt = AtomicUsize::new(0);
 
+    let mut writers: Vec<BufWriter<File>> = vec![];
+    for i in 0..8 {
+        let extension = &args.outfile.extension().expect("no extension");
+        let base_name = &args.outfile.file_stem().expect("no file name");
+
+        let fname = format!(
+            "{}_{}.{}",
+            base_name.to_string_lossy(),
+            i + 1,
+            extension.to_string_lossy()
+        );
+        println!("{}", fname);
+        writers.push(BufWriter::new(File::create(&fname)?));
+    }
+
+    let mut core_counts = vec![0,0,0,0,0,0,0,0];
+
     let callback = |conn: ConnFeatures| {
+        let core = unsafe { rte_lcore_id() } as usize;
         if let Ok(serialized) = serde_json::to_string(&conn) {
             // println!("{}", conn);
-            let mut wtr = file.lock().unwrap();
-            wtr.write_all(serialized.as_bytes()).unwrap();
-            wtr.write_all(b"\n").unwrap();
+            // let mut wtr = file.lock().unwrap();
+            // let wtr = &writers[core];
+            let mut core_count = &mut core_counts[core];
+            *core_count += 1;
+            println!("{}", core_count);
+            // wtr.write_all(serialized.as_bytes()).unwrap();
+            // wtr.write_all(b"\n").unwrap();
             cnt.fetch_add(1, Ordering::Relaxed);
         }
     };
