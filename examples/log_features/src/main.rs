@@ -58,13 +58,17 @@ fn main() -> Result<()> {
 
     let callback = |conn: ConnFeatures| {
         let core = unsafe { rte_lcore_id() } as usize;
+        let ptr = core_counts.as_ptr();
+        let mut core_cnt = unsafe { *ptr.offset(0) };
+        core_cnt += 1;
+        println!("{}: {}", core, core_cnt);
         if let Ok(serialized) = serde_json::to_string(&conn) {
             // println!("{}", conn);
             // let mut wtr = file.lock().unwrap();
             // let wtr = &writers[core];
-            let mut core_count = &mut core_counts[core];
-            *core_count += 1;
-            println!("{}", core_count);
+            // let mut core_count = &mut core_counts[core];
+            // *core_count += 1;
+            // println!("{}", core_count);
             // wtr.write_all(serialized.as_bytes()).unwrap();
             // wtr.write_all(b"\n").unwrap();
             cnt.fetch_add(1, Ordering::Relaxed);
