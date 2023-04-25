@@ -177,6 +177,10 @@ impl Trackable for TrackedConnectionFeatures {
         };
         subscription.invoke(conn);
     }
+
+    fn early_terminate(&self) -> bool {
+        false
+    }
 }
 
 /// A uni-directional flow.

@@ -5,8 +5,8 @@
 //! parameter and immutably borrows values from the environment. Built-in subscribable types can
 //! be customized within the framework to provide additional data to the callback if needed.
 
-pub mod connection;
 pub mod conn_features;
+pub mod connection;
 pub mod connection_features;
 pub mod connection_frame;
 pub mod dns_transaction;
@@ -16,8 +16,8 @@ pub mod tls_handshake;
 pub mod zc_frame;
 
 // Re-export subscribable types for more convenient usage.
-pub use self::connection::Connection;
 pub use self::conn_features::ConnFeatures;
+pub use self::connection::Connection;
 pub use self::connection_features::ConnectionFeatures;
 pub use self::connection_frame::ConnectionFrame;
 pub use self::dns_transaction::DnsTransaction;

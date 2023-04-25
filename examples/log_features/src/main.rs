@@ -1,5 +1,5 @@
 use retina_core::config::load_config;
-use retina_core::subscription::ConnectionFeatures;
+use retina_core::subscription::ConnFeatures;
 use retina_core::Runtime;
 use retina_filtergen::filter;
 
@@ -38,7 +38,7 @@ fn main() -> Result<()> {
     let file = Mutex::new(BufWriter::new(File::create(&args.outfile)?));
     let cnt = AtomicUsize::new(0);
 
-    let callback = |conn: ConnectionFeatures| {
+    let callback = |conn: ConnFeatures| {
         if let Ok(serialized) = serde_json::to_string(&conn) {
             // println!("{}", conn);
             let mut wtr = file.lock().unwrap();
