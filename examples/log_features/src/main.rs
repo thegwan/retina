@@ -62,9 +62,9 @@ fn main() -> Result<()> {
             // println!("{}", conn);
             // let mut wtr = file.lock().unwrap();
             // let wtr = &writers[core];
-            let mut core_count = &mut core_counts[core];
+            let core_count = &mut core_counts[core];
             *core_count += 1;
-            println!("{}", core_count);
+            println!("{}: {}", core, core_count);
             // wtr.write_all(serialized.as_bytes()).unwrap();
             // wtr.write_all(b"\n").unwrap();
             cnt.fetch_add(1, Ordering::Relaxed);
