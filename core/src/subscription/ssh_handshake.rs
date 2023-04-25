@@ -37,7 +37,7 @@ impl Subscribable for SshHandshake {
 
     fn process_packet(
         mbuf: Mbuf,
-        subscription: &Subscription<Self>,
+        subscription: &mut Subscription<Self>,
         stream_table: &mut ConnTracker<Self::Interm>,
     ) {
         match subscription.packet_filter(&mbuf) {
@@ -82,7 +82,7 @@ impl Reassembled for IntermSsh {
         &mut self,
         _payload: Payload,
         state: ConnState,
-        _subscription: &Subscription<Self::Output>,
+        _subscription: &mut Subscription<Self::Output>,
     ) -> ConnState {
         state
     }
@@ -91,7 +91,7 @@ impl Reassembled for IntermSsh {
         &mut self,
         _terminate: bool,
         parser: &mut Parser,
-        subscription: &Subscription<Self::Output>,
+        subscription: &mut Subscription<Self::Output>,
     ) -> ConnState {
         if let Parser::Ssh(ssh) = parser {
             // Only one session per SSH connection

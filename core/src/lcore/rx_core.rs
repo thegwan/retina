@@ -9,7 +9,7 @@ use crate::protocols::stream::ParserRegistry;
 use crate::subscription::*;
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use itertools::Itertools;
 
@@ -23,7 +23,7 @@ where
     pub(crate) rxqueues: Vec<RxQueue>,
     pub(crate) filter: Filter,
     pub(crate) conntrack: ConnTrackConfig,
-    pub(crate) subscription: Arc<Subscription<'a, S>>,
+    pub(crate) subscription: Arc<Mutex<Subscription<'a, S>>>,
     pub(crate) is_running: Arc<AtomicBool>,
 }
 
@@ -36,7 +36,7 @@ where
         rxqueues: Vec<RxQueue>,
         filter: Filter,
         conntrack: ConnTrackConfig,
-        subscription: Arc<Subscription<'a, S>>,
+        subscription: Arc<Mutex<Subscription<'a, S>>>,
         is_running: Arc<AtomicBool>,
     ) -> Self {
         RxCore {
@@ -67,7 +67,7 @@ where
         }
     }
 
-    pub(crate) fn rx_loop(&self) {
+    pub(crate) fn rx_loop(&mut self) {
         // TODO: need check to enforce that each core only has same queue types
         if self.rxqueues[0].ty == RxQueueType::Receive {
             self.rx_process();
@@ -76,7 +76,7 @@ where
         }
     }
 
-    fn rx_process(&self) {
+    fn rx_process(&mut self) {
         log::info!(
             "Launched RX on core {}, polling {}",
             self.id,
@@ -90,7 +90,7 @@ where
         let registry = ParserRegistry::build::<S>(&self.filter).expect("Unable to build registry");
         log::debug!("{:#?}", registry);
         let mut conn_table = ConnTracker::<S::Tracked>::new(config, registry);
-
+        let mut subscription = self.subscription.lock().unwrap();
         while self.is_running.load(Ordering::Relaxed) {
             for rxqueue in self.rxqueues.iter() {
                 let mbufs: Vec<Mbuf> = self.rx_burst(rxqueue, 32);
@@ -106,14 +106,14 @@ where
                     // );
                     nb_pkts += 1;
                     nb_bytes += mbuf.data_len() as u64;
-                    S::process_packet(mbuf, &self.subscription, &mut conn_table);
+                    S::process_packet(mbuf, &mut subscription, &mut conn_table);
                 }
             }
-            conn_table.check_inactive(&self.subscription);
+            conn_table.check_inactive(&mut subscription);
         }
 
         // // Deliver remaining data in table from unfinished connections
-        conn_table.drain(&self.subscription);
+        conn_table.drain(&mut subscription);
 
         log::info!(
             "Core {} total recv from {}: {} pkts, {} bytes",

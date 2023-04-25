@@ -172,7 +172,7 @@ impl Subscribable for Connection {
 
     fn process_packet(
         mbuf: Mbuf,
-        subscription: &Subscription<Self>,
+        subscription: &mut Subscription<Self>,
         conn_tracker: &mut ConnTracker<Self::Tracked>,
     ) {
         match subscription.filter_packet(&mbuf) {
@@ -276,17 +276,17 @@ impl Trackable for TrackedConnection {
         self.update(pdu);
     }
 
-    fn on_match(&mut self, session: Session, _subscription: &Subscription<Self::Subscribed>) {
+    fn on_match(&mut self, session: Session, _subscription: &mut Subscription<Self::Subscribed>) {
         if let SessionData::Tls(tls) = session.data {
             self.sni = tls.sni().to_string();
         }
     }
 
-    fn post_match(&mut self, pdu: L4Pdu, _subscription: &Subscription<Self::Subscribed>) {
+    fn post_match(&mut self, pdu: L4Pdu, _subscription: &mut Subscription<Self::Subscribed>) {
         self.update(pdu)
     }
 
-    fn on_terminate(&mut self, subscription: &Subscription<Self::Subscribed>) {
+    fn on_terminate(&mut self, subscription: &mut Subscription<Self::Subscribed>) {
         let (duration, max_inactivity, time_to_second_packet) =
             if self.ctos.nb_pkts + self.stoc.nb_pkts == 1 {
                 (

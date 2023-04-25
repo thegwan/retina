@@ -58,7 +58,7 @@ impl TimerWheel {
     pub(super) fn check_inactive<T: Trackable>(
         &mut self,
         table: &mut LinkedHashMap<ConnId, Conn<T>>,
-        subscription: &Subscription<T::Subscribed>,
+        subscription: &mut Subscription<T::Subscribed>,
     ) {
         let table_len = table.len();
         if let Ok(now) = self.ticker.try_recv() {
@@ -81,7 +81,7 @@ impl TimerWheel {
         &mut self,
         now: Instant,
         table: &mut LinkedHashMap<ConnId, Conn<T>>,
-        subscription: &Subscription<T::Subscribed>,
+        subscription: &mut Subscription<T::Subscribed>,
     ) -> usize {
         let period = self.period;
         let nb_buckets = self.timers.len();

@@ -84,7 +84,7 @@ where
     pub(super) fn update(
         &mut self,
         pdu: L4Pdu,
-        subscription: &Subscription<T::Subscribed>,
+        subscription: &mut Subscription<T::Subscribed>,
         registry: &ParserRegistry,
     ) {
         match &mut self.l4conn {
@@ -136,7 +136,7 @@ where
     /// - the connection naturally terminates (e.g., FIN/RST)
     /// - the connection expires due to inactivity
     /// - the connection is drained at the end of the run
-    pub(crate) fn terminate(&mut self, subscription: &Subscription<T::Subscribed>) {
+    pub(crate) fn terminate(&mut self, subscription: &mut Subscription<T::Subscribed>) {
         match self.info.state {
             ConnState::Probing => {
                 if let FilterResult::MatchTerminal(_) = subscription.filter_conn(&self.info.cdata) {

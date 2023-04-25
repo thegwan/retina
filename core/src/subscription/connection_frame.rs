@@ -76,7 +76,7 @@ impl Subscribable for ConnectionFrame {
 
     fn process_packet(
         mbuf: Mbuf,
-        subscription: &Subscription<Self>,
+        subscription: &mut Subscription<Self>,
         conn_tracker: &mut ConnTracker<Self::Tracked>,
     ) {
         match subscription.filter_packet(&mbuf) {
@@ -118,17 +118,17 @@ impl Trackable for TrackedConnectionFrame {
             .push(ConnectionFrame::new(self.five_tuple, pdu.mbuf_ref()));
     }
 
-    fn on_match(&mut self, _session: Session, subscription: &Subscription<Self::Subscribed>) {
+    fn on_match(&mut self, _session: Session, subscription: &mut Subscription<Self::Subscribed>) {
         self.buf.drain(..).for_each(|frame| {
             subscription.invoke(frame);
         });
     }
 
-    fn post_match(&mut self, pdu: L4Pdu, subscription: &Subscription<Self::Subscribed>) {
+    fn post_match(&mut self, pdu: L4Pdu, subscription: &mut Subscription<Self::Subscribed>) {
         subscription.invoke(ConnectionFrame::new(self.five_tuple, pdu.mbuf_ref()));
     }
 
-    fn on_terminate(&mut self, subscription: &Subscription<Self::Subscribed>) {
+    fn on_terminate(&mut self, subscription: &mut Subscription<Self::Subscribed>) {
         self.buf.drain(..).for_each(|frame| {
             subscription.invoke(frame);
         });

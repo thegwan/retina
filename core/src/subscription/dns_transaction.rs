@@ -63,7 +63,7 @@ impl Subscribable for DnsTransaction {
 
     fn process_packet(
         mbuf: Mbuf,
-        subscription: &Subscription<Self>,
+        subscription: &mut Subscription<Self>,
         conn_tracker: &mut ConnTracker<Self::Tracked>,
     ) {
         match subscription.filter_packet(&mbuf) {
@@ -104,7 +104,7 @@ impl Trackable for TrackedDns {
 
     fn pre_match(&mut self, _pdu: L4Pdu, _session_id: Option<usize>) {}
 
-    fn on_match(&mut self, session: Session, subscription: &Subscription<Self::Subscribed>) {
+    fn on_match(&mut self, session: Session, subscription: &mut Subscription<Self::Subscribed>) {
         if let SessionData::Dns(dns) = session.data {
             subscription.invoke(DnsTransaction {
                 five_tuple: self.five_tuple,
@@ -113,9 +113,9 @@ impl Trackable for TrackedDns {
         }
     }
 
-    fn post_match(&mut self, _pdu: L4Pdu, _subscription: &Subscription<Self::Subscribed>) {}
+    fn post_match(&mut self, _pdu: L4Pdu, _subscription: &mut Subscription<Self::Subscribed>) {}
 
-    fn on_terminate(&mut self, _subscription: &Subscription<Self::Subscribed>) {}
+    fn on_terminate(&mut self, _subscription: &mut Subscription<Self::Subscribed>) {}
 
     fn early_terminate(&self) -> bool {
         false

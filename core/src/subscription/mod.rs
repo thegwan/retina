@@ -63,7 +63,7 @@ pub trait Subscribable {
     /// Process a single incoming packet.
     fn process_packet(
         mbuf: Mbuf,
-        subscription: &Subscription<Self>,
+        subscription: &mut Subscription<Self>,
         conn_tracker: &mut ConnTracker<Self::Tracked>,
     ) where
         Self: Sized;
@@ -81,13 +81,13 @@ pub trait Trackable {
     fn pre_match(&mut self, pdu: L4Pdu, session_id: Option<usize>);
 
     /// Update tracked subscription data on a full filter match.
-    fn on_match(&mut self, session: Session, subscription: &Subscription<Self::Subscribed>);
+    fn on_match(&mut self, session: Session, subscription: &mut Subscription<Self::Subscribed>);
 
     /// Update tracked subscription data after a full filter match.
-    fn post_match(&mut self, pdu: L4Pdu, subscription: &Subscription<Self::Subscribed>);
+    fn post_match(&mut self, pdu: L4Pdu, subscription: &mut Subscription<Self::Subscribed>);
 
     /// Update tracked subscription data on connection termination.
-    fn on_terminate(&mut self, subscription: &Subscription<Self::Subscribed>);
+    fn on_terminate(&mut self, subscription: &mut Subscription<Self::Subscribed>);
 
     /// Returns `true` if Trackable should be terminated early.
     fn early_terminate(&self) -> bool;
@@ -102,7 +102,7 @@ where
     packet_filter: PacketFilterFn,
     conn_filter: ConnFilterFn,
     session_filter: SessionFilterFn,
-    callback: Box<dyn Fn(S) + 'a>,
+    callback: Box<dyn FnMut(S) + 'a>,
     #[cfg(feature = "timing")]
     pub(crate) timers: Timers,
 }
@@ -112,7 +112,7 @@ where
     S: Subscribable,
 {
     /// Creates a new subscription from a filter and a callback.
-    pub(crate) fn new(factory: FilterFactory, cb: impl Fn(S) + 'a) -> Self {
+    pub(crate) fn new(factory: FilterFactory, cb: impl FnMut(S) + 'a) -> Self {
         Subscription {
             packet_filter: factory.packet_filter,
             conn_filter: factory.conn_filter,
@@ -140,7 +140,7 @@ where
     }
 
     /// Invoke the callback on `S`.
-    pub(crate) fn invoke(&self, obj: S) {
+    pub(crate) fn invoke(&mut self, obj: S) {
         tsc_start!(t0);
         (self.callback)(obj);
         tsc_record!(self.timers, "callback", t0);

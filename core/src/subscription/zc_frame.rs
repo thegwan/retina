@@ -66,7 +66,7 @@ impl Subscribable for ZcFrame {
 
     fn process_packet(
         mbuf: Mbuf,
-        subscription: &Subscription<Self>,
+        subscription: &mut Subscription<Self>,
         conn_tracker: &mut ConnTracker<Self::Tracked>,
     ) {
         match subscription.filter_packet(&mbuf) {
@@ -114,7 +114,7 @@ impl Trackable for TrackedZcFrame {
         }
     }
 
-    fn on_match(&mut self, session: Session, subscription: &Subscription<Self::Subscribed>) {
+    fn on_match(&mut self, session: Session, subscription: &mut Subscription<Self::Subscribed>) {
         if let Some(session) = self.session_buf.remove(&session.id) {
             session.into_iter().for_each(|mbuf| {
                 subscription.invoke(mbuf);
@@ -122,11 +122,11 @@ impl Trackable for TrackedZcFrame {
         }
     }
 
-    fn post_match(&mut self, pdu: L4Pdu, subscription: &Subscription<Self::Subscribed>) {
+    fn post_match(&mut self, pdu: L4Pdu, subscription: &mut Subscription<Self::Subscribed>) {
         subscription.invoke(pdu.mbuf_own());
     }
 
-    fn on_terminate(&mut self, _subscription: &Subscription<Self::Subscribed>) {}
+    fn on_terminate(&mut self, _subscription: &mut Subscription<Self::Subscribed>) {}
 
     fn early_terminate(&self) -> bool {
         false

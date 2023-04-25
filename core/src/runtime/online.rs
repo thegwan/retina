@@ -11,7 +11,7 @@ use crate::subscription::*;
 use std::collections::BTreeMap;
 use std::os::raw::{c_uint, c_void};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 pub(crate) struct OnlineRuntime<'a, S>
@@ -34,7 +34,7 @@ where
         options: OnlineOptions,
         mempools: &mut BTreeMap<SocketId, Mempool>,
         filter: Filter,
-        subscription: Arc<Subscription<'a, S>>,
+        subscription: Arc<Mutex<Subscription<'a, S>>>,
     ) -> Self {
         // Set up signal handler
         let is_running = Arc::new(AtomicBool::new(true));
@@ -182,11 +182,11 @@ where
 {
     // enforce that workers cores cannot mutate runtime
     // TODO: make this *const and use Mutex for interior mutability
-    let rx_cores = arg as *const BTreeMap<CoreId, RxCore<S>>;
-    let rx_cores = unsafe { &*rx_cores };
+    let rx_cores = arg as *mut BTreeMap<CoreId, RxCore<S>>;
+    let rx_cores = unsafe { &mut *rx_cores };
 
     let core_id = CoreId(unsafe { dpdk::rte_lcore_id() } as u32);
-    let rx_core = rx_cores.get(&core_id).expect("Invalid Core");
+    let rx_core = rx_cores.get_mut(&core_id).expect("Invalid Core");
 
     // TODO: slight optimization: even if filter is nonempty, if the hardware takes care of the
     // whole thing we can also run_rx with no filter

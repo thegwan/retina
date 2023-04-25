@@ -33,7 +33,7 @@ impl Subscribable for Stream {
 
     fn process_packet(
         mbuf: Mbuf,
-        subscription: &Subscription<Self>,
+        subscription: &mut Subscription<Self>,
         stream_table: &mut ConnTracker<Self::Interm>,
     ) {
         match subscription.packet_filter(&mbuf) {
@@ -197,7 +197,7 @@ pub struct IntermStream {
 }
 
 impl IntermStream {
-    fn deliver_chunked(&mut self, direction: Direction, subscription: &Subscription<Stream>) {
+    fn deliver_chunked(&mut self, direction: Direction, subscription: &mut Subscription<Stream>) {
         let bytes = match direction {
             Direction::FromOriginator => &mut self.ctos.bytes,
             Direction::FromResponder => &mut self.stoc.bytes,
@@ -261,7 +261,7 @@ impl Reassembled for IntermStream {
         &mut self,
         payload: Payload,
         state: ConnState,
-        subscription: &Subscription<Self::Output>,
+        subscription: &mut Subscription<Self::Output>,
     ) -> ConnState {
         if payload.length() == 0 {
             return state;
@@ -292,7 +292,7 @@ impl Reassembled for IntermStream {
         &mut self,
         _terminate: bool,
         _parser: &mut Parser,
-        subscription: &Subscription<Self::Output>,
+        subscription: &mut Subscription<Self::Output>,
     ) -> ConnState {
         // just passed stream filter, deliver all buffered payloads
         log::debug!("Stream filter success.");

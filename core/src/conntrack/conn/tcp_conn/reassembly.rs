@@ -49,7 +49,7 @@ impl TcpFlow {
         &mut self,
         mut segment: L4Pdu,
         info: &mut ConnInfo<T>,
-        subscription: &Subscription<T::Subscribed>,
+        subscription: &mut Subscription<T::Subscribed>,
         registry: &ParserRegistry,
     ) {
         let length = segment.length() as u32;
@@ -118,7 +118,7 @@ impl TcpFlow {
         &mut self,
         expected_seq: u32,
         info: &mut ConnInfo<T>,
-        subscription: &Subscription<T::Subscribed>,
+        subscription: &mut Subscription<T::Subscribed>,
         registry: &ParserRegistry,
     ) {
         if info.state == ConnState::Remove {
@@ -177,7 +177,7 @@ impl OutOfOrderBuffer {
         expected_seq: u32,
         consumed_flags: &mut u8,
         info: &mut ConnInfo<T>,
-        subscription: &Subscription<T::Subscribed>,
+        subscription: &mut Subscription<T::Subscribed>,
         registry: &ParserRegistry,
     ) -> u32 {
         let mut next_seq = expected_seq;

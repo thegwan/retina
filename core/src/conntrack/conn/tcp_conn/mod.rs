@@ -28,7 +28,7 @@ impl TcpConn {
         &mut self,
         segment: L4Pdu,
         info: &mut ConnInfo<T>,
-        subscription: &Subscription<T::Subscribed>,
+        subscription: &mut Subscription<T::Subscribed>,
         registry: &ParserRegistry,
     ) {
         if segment.dir {

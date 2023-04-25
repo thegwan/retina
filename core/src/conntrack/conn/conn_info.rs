@@ -34,7 +34,7 @@ where
     pub(crate) fn consume_pdu(
         &mut self,
         pdu: L4Pdu,
-        subscription: &Subscription<T::Subscribed>,
+        subscription: &mut Subscription<T::Subscribed>,
         registry: &ParserRegistry,
     ) {
         match self.state {
@@ -56,7 +56,7 @@ where
     fn on_probe(
         &mut self,
         pdu: L4Pdu,
-        subscription: &Subscription<T::Subscribed>,
+        subscription: &mut Subscription<T::Subscribed>,
         registry: &ParserRegistry,
     ) {
         match registry.probe_all(&pdu) {
@@ -95,7 +95,7 @@ where
         }
     }
 
-    fn on_parse(&mut self, pdu: L4Pdu, subscription: &Subscription<T::Subscribed>) {
+    fn on_parse(&mut self, pdu: L4Pdu, subscription: &mut Subscription<T::Subscribed>) {
         match self.cdata.conn_parser.parse(&pdu) {
             ParseResult::Done(id) => {
                 self.sdata.pre_match(pdu, Some(id));
@@ -120,7 +120,7 @@ where
         }
     }
 
-    fn on_track(&mut self, pdu: L4Pdu, subscription: &Subscription<T::Subscribed>) {
+    fn on_track(&mut self, pdu: L4Pdu, subscription: &mut Subscription<T::Subscribed>) {
         self.sdata.post_match(pdu, subscription);
     }
 

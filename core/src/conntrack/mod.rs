@@ -77,7 +77,7 @@ where
         &mut self,
         mbuf: Mbuf,
         ctxt: L4Context,
-        subscription: &Subscription<T::Subscribed>,
+        subscription: &mut Subscription<T::Subscribed>,
     ) {
         let conn_id = ConnId::new(ctxt.src, ctxt.dst, ctxt.proto);
         match self.table.raw_entry_mut().from_key(&conn_id) {
@@ -139,7 +139,7 @@ where
     }
 
     /// Drains any remaining connections that satisfy the filter on runtime termination.
-    pub(crate) fn drain(&mut self, subscription: &Subscription<T::Subscribed>) {
+    pub(crate) fn drain(&mut self, subscription: &mut Subscription<T::Subscribed>) {
         log::info!("Draining Connection table");
         for (_, mut conn) in self.table.drain() {
             conn.terminate(subscription);
@@ -147,7 +147,7 @@ where
     }
 
     /// Checks for and removes inactive connections.
-    pub(crate) fn check_inactive(&mut self, subscription: &Subscription<T::Subscribed>) {
+    pub(crate) fn check_inactive(&mut self, subscription: &mut Subscription<T::Subscribed>) {
         self.timerwheel
             .check_inactive(&mut self.table, subscription);
     }
