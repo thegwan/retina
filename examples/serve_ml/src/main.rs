@@ -1,5 +1,5 @@
 use retina_core::config::load_config;
-use retina_core::subscription::ConnectionFeatures;
+use retina_core::subscription::ConnFeatures;
 use retina_core::Runtime;
 use retina_filtergen::filter;
 
@@ -39,15 +39,9 @@ fn main() -> Result<()> {
     let cnt = AtomicUsize::new(0);
     let clf = load_clf(&args.model_file)?;
 
-    let callback = |conn: ConnectionFeatures| {
+    let callback = |conn: ConnFeatures| {
         //println!("{}", conn.sni);
-        let start = Instant::now();
-        let features = conn
-            .features(None)
-            .iter()
-            .map(|&x| x as f32)
-            .collect::<Vec<f32>>();
-        println!("get features: {:?}", start.elapsed());
+        let features = conn.features;
         let instance = DenseMatrix::new(1, features.len(), features, false);
         let start = Instant::now();
         let pred = clf.predict(&instance).unwrap();
@@ -65,9 +59,9 @@ fn main() -> Result<()> {
 /// Loads a trained classifier from `file`.
 fn load_clf(
     fname: &PathBuf,
-) -> Result<DecisionTreeClassifier<f32, usize, DenseMatrix<f32>, Vec<usize>>> {
+) -> Result<DecisionTreeClassifier<f64, usize, DenseMatrix<f64>, Vec<usize>>> {
     let mut file = File::open(fname)?;
-    let clf: DecisionTreeClassifier<f32, usize, DenseMatrix<f32>, Vec<usize>> =
+    let clf: DecisionTreeClassifier<f64, usize, DenseMatrix<f64>, Vec<usize>> =
         bincode::deserialize_from(&mut file)?;
     Ok(clf)
 }
