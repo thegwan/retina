@@ -163,8 +163,7 @@ impl Trackable for TrackedPacketFeatures {
     }
 
     fn early_terminate(&self) -> bool {
-        // self.packets.len() >= 8
-        false
+        self.packets.len() >= 2048
     }
 }
 
