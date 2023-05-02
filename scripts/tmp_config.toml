@@ -6,7 +6,7 @@ capacity = 8388608
 cache_size = 512
 
 [online]
-duration = 5
+duration = 10
 nb_rxd = 32768
 promiscuous = true
 mtu = 1500
@@ -17,7 +17,7 @@ cores = [ 1, 2, 3, 4, 5, 6, 7, 8,]
 
 [online.ports.sink]
 core = 9
-nb_buckets = 56
+nb_buckets = 504
 
 [conntrack]
 max_connections = 10000000
