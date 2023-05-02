@@ -1,33 +1,35 @@
-import subprocess, sys, re, os
+import subprocess, re, os
 import toml
-import time
 import argparse
 
 
+# allowed % packet drop
 EPSILON=0.00001
-def execute(cmd):
+def execute(cmd, executable):
     stop = 0
     popen = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, universal_newlines=True)
     for stdout_line in iter(popen.stdout.readline, ''):
         print(stdout_line, end='')
         if 'SW Dropped' in stdout_line:
             num = re.findall('\d*\.*\d+\%', stdout_line)
-            print(num)
-            if len(num) == 1 and float(num[0].split('%')[0]) > EPSILON :
-                print(f'TERMINATING, SW drops greater than {EPSILON}...')
-                stream = os.popen(f'pidof {cmd}')
+            if not num: continue
+            value = float(num[0].split('%')[0]) 
+            if value > EPSILON :
+                print(f'TERMINATING, current SW drops {value} greater than {EPSILON}...')
+                stream = os.popen(f'pidof {executable}')
                 pid = stream.read()
-                os.system('sudo kill -INT ' + pid)
+                os.system(f'sudo kill -INT {pid}')
                 stop = 0      # continue decreasing buckets
         elif 'DROPPED' in stdout_line:
             num = re.findall('\d*\.*\d+\%', stdout_line)
-            print(f'DROPPED: {num}')
-            if len(num) == 1 and float(num[0].split('%')[0]) == 0:
+            if not num: continue
+            value = float(num[0].split('%')[0]) 
+            if value == 0:
                 # 0 drops
                 print('Zero drops...')
                 stop = 1
-            elif len(num) == 1 and float(num[0].split('%')[0]) <= EPSILON :
-                print(f'Epsilon {EPSILON} drops...')
+            elif value <= EPSILON :
+                print(f'Epsilon {value}% dropped...')
                 stop = 2
 
     popen.stdout.close()
@@ -43,7 +45,8 @@ def main(args):
     config_file = args.config
     outfile = args.outfile
 
-    cmd = f'sudo env LD_LIBRARY_PATH=$LD_LIBRARY_PATH RUST_LOG=error /home/gerryw/retina/target/release/{binary} -c {config_file} -o {outfile}'
+    executable = f'/home/gerryw/retina/target/release/{binary}'
+    cmd = f'sudo env LD_LIBRARY_PATH=$LD_LIBRARY_PATH RUST_LOG=error {executable} -c {config_file} -o {outfile}'
 
     config=toml.load(config_file)
     n_cores = len(config['online']['ports'][0]['cores'])
@@ -59,7 +62,7 @@ def main(args):
         toml.dump(config, f)
         f.close()
 
-        stop_code = execute(cmd)
+        stop_code = execute(cmd, executable)
         if stop_code > 0:
             print(f'Stop code {stop_code}: done')
             break
