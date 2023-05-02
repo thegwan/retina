@@ -171,14 +171,42 @@ impl Trackable for TrackedPacketFeatures {
 /// Subset of packet features
 #[derive(Debug, Clone, Serialize)]
 pub struct PacketFeature {
-    /// direction `True` for up, `False` for down
-    pub dir: bool,
+    /// direction 1 for up, 0 for down
+    pub dir: u32,
     /// time offset from start of connection in ns
     pub delta_ns: u32,
-    /// IP packet length
-    pub pktsize: u32,
-    /// TCP window size
-    pub winsize: u32,
+
+    pub ip_ihl: u32,
+    pub ip_dscp: u32,
+    pub ip_ecn: u32,
+    pub ip_total_length: u32,
+    pub ip_id: u32,
+    pub ip_flags_rf: u32,
+    pub ip_flags_df: u32,
+    pub ip_flags_mf: u32,
+    pub ip_fragment_offset: u32,
+    pub ip_ttl: u32,
+    pub ip_protocol: u32,
+    pub ip_header_checksum: u32,
+    pub ip_src_addr: u32,
+    pub ip_dst_addr: u32,
+    pub tcp_src_port: u32,
+    pub tcp_dst_port: u32,
+    pub tcp_seq_num: u32,
+    pub tcp_ack_num: u32,
+    pub tcp_data_offset: u32,
+    pub tcp_reserved: u32,
+    pub tcp_flags_cwr: u32,
+    pub tcp_flags_ece: u32,
+    pub tcp_flags_urg: u32,
+    pub tcp_flags_ack: u32,
+    pub tcp_flags_psh: u32,
+    pub tcp_flags_rst: u32,
+    pub tcp_flags_syn: u32,
+    pub tcp_flags_fin: u32,
+    pub tcp_window_size: u32,
+    pub tcp_checksum: u32,
+    pub tcp_urgent_ptr: u32,
 }
 
 impl PacketFeature {
@@ -192,10 +220,39 @@ impl PacketFeature {
 
         let tcp = ipv4.parse_to::<Tcp>()?; 
         let packet = PacketFeature {
-            dir: segment.dir,
+            dir: segment.dir.into(),
             delta_ns,
-            pktsize: ipv4.total_length() as u32,
-            winsize: tcp.window() as u32,
+            ip_ihl: ipv4.ihl().into(),
+            ip_dscp: ipv4.dscp().into(),
+            ip_ecn: ipv4.ecn().into(),
+            ip_total_length: ipv4.total_length().into(),
+            ip_id: ipv4.identification().into(),
+            ip_flags_rf: ipv4.rf().into(),
+            ip_flags_df: ipv4.df().into(),
+            ip_flags_mf: ipv4.mf().into(),
+            ip_fragment_offset: ipv4.fragment_offset().into(),
+            ip_ttl: ipv4.time_to_live().into(),
+            ip_protocol: ipv4.protocol().into(),
+            ip_header_checksum: ipv4.header_checksum().into(),
+            ip_src_addr: ipv4.src_addr().into(),
+            ip_dst_addr: ipv4.dst_addr().into(),
+            tcp_src_port: tcp.src_port().into(),
+            tcp_dst_port: tcp.dst_port().into(),
+            tcp_seq_num: tcp.seq_no().into(),
+            tcp_ack_num: tcp.ack_no().into(),
+            tcp_data_offset: tcp.data_offset().into(),
+            tcp_reserved: tcp.reserved().into(),
+            tcp_flags_cwr: tcp.cwr().into(),
+            tcp_flags_ece: tcp.ece().into(),
+            tcp_flags_urg: tcp.urg().into(),
+            tcp_flags_ack: tcp.ack().into(),
+            tcp_flags_psh: tcp.psh().into(),
+            tcp_flags_rst: tcp.rst().into(),
+            tcp_flags_syn: tcp.syn().into(),
+            tcp_flags_fin: tcp.fin().into(),
+            tcp_window_size: tcp.window().into(),
+            tcp_checksum: tcp.checksum().into(),
+            tcp_urgent_ptr: tcp.urgent_pointer().into(),
         };
         Ok(packet)
     }
