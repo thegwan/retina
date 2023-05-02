@@ -4,7 +4,7 @@ import time
 import argparse
 
 
-EPSILON=0
+EPSILON=0.00001
 def execute(cmd):
     stop = 0
     popen = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, universal_newlines=True)
