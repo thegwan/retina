@@ -34,7 +34,7 @@ use std::fmt;
 use anyhow::Result;
 // use ndarray::Array;
 // use ndarray_stats::SummaryStatisticsExt;
-use serde::ser::{SerializeStruct, Serializer};
+use serde::ser::{SerializeStruct, Serializer, SerializeSeq};
 use serde::Serialize;
 // use statrs::statistics::Data;
 // use statrs::statistics::{Distribution, Max, Min, OrderStatistics};
@@ -169,7 +169,7 @@ impl Trackable for TrackedPacketFeatures {
 
 
 /// Subset of packet features
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct PacketFeature {
     /// direction 1 for up, 0 for down
     pub dir: u32,
@@ -207,6 +207,49 @@ pub struct PacketFeature {
     pub tcp_window_size: u32,
     pub tcp_checksum: u32,
     pub tcp_urgent_ptr: u32,
+}
+
+impl Serialize for PacketFeature {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut arr = serializer.serialize_seq(Some(33))?;
+        arr.serialize_element(&self.dir)?;
+        arr.serialize_element(&self.delta_ns)?;
+        arr.serialize_element(&self.ip_ihl)?;
+        arr.serialize_element(&self.ip_dscp)?;
+        arr.serialize_element(&self.ip_ecn)?;
+        arr.serialize_element(&self.ip_total_length)?;
+        arr.serialize_element(&self.ip_id)?;
+        arr.serialize_element(&self.ip_flags_rf)?;
+        arr.serialize_element(&self.ip_flags_df)?;
+        arr.serialize_element(&self.ip_flags_mf)?;
+        arr.serialize_element(&self.ip_fragment_offset)?;
+        arr.serialize_element(&self.ip_ttl)?;
+        arr.serialize_element(&self.ip_protocol)?;
+        arr.serialize_element(&self.ip_header_checksum)?;
+        arr.serialize_element(&self.ip_src_addr)?;
+        arr.serialize_element(&self.ip_dst_addr)?;
+        arr.serialize_element(&self.tcp_src_port)?;
+        arr.serialize_element(&self.tcp_dst_port)?;
+        arr.serialize_element(&self.tcp_seq_num)?;
+        arr.serialize_element(&self.tcp_ack_num)?;
+        arr.serialize_element(&self.tcp_data_offset)?;
+        arr.serialize_element(&self.tcp_reserved)?;
+        arr.serialize_element(&self.tcp_flags_cwr)?;
+        arr.serialize_element(&self.tcp_flags_ece)?;
+        arr.serialize_element(&self.tcp_flags_urg)?;
+        arr.serialize_element(&self.tcp_flags_ack)?;
+        arr.serialize_element(&self.tcp_flags_psh)?;
+        arr.serialize_element(&self.tcp_flags_rst)?;
+        arr.serialize_element(&self.tcp_flags_syn)?;
+        arr.serialize_element(&self.tcp_flags_fin)?;
+        arr.serialize_element(&self.tcp_window_size)?;
+        arr.serialize_element(&self.tcp_checksum)?;
+        arr.serialize_element(&self.tcp_urgent_ptr)?;
+        arr.end()
+    }
 }
 
 impl PacketFeature {
