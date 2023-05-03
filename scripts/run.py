@@ -4,7 +4,7 @@ import argparse
 
 
 # allowed % packet drop
-EPSILON=0.00001
+EPSILON=0.001
 def execute(cmd, executable):
     stop = 0
     popen = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, universal_newlines=True)
