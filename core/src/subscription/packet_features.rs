@@ -7,7 +7,7 @@
 //! ## Example
 //! Logs TLS packet features to a file:
 //! ```
-//! #[filter("tls")]
+//! #[filter("ipv4 and tcp")]
 //! fn main() {
 //!     // TBD
 //! }
@@ -21,23 +21,16 @@ use crate::filter::FilterResult;
 use crate::memory::mbuf::Mbuf;
 use crate::protocols::packet::ethernet::Ethernet;
 use crate::protocols::packet::ipv4::Ipv4;
-use crate::protocols::packet::tcp::Tcp;
 use crate::protocols::packet::Packet;
-use crate::protocols::stream::{ConnParser, Session, SessionData};
+use crate::protocols::stream::{ConnParser, Session};
 use crate::subscription::{Level, Subscribable, Subscription, Trackable};
 
-// use std::collections::HashMap;
-// use std::collections::HashSet;
 use std::fmt;
-// use std::ops::Index;
 
 use anyhow::Result;
-// use ndarray::Array;
-// use ndarray_stats::SummaryStatisticsExt;
-use serde::ser::{SerializeStruct, Serializer, SerializeSeq};
+use chrono::Utc;
+use serde::ser::{SerializeSeq, Serializer};
 use serde::Serialize;
-// use statrs::statistics::Data;
-// use statrs::statistics::{Distribution, Max, Min, OrderStatistics};
 
 use lazy_static::lazy_static;
 
@@ -46,34 +39,38 @@ lazy_static! {
 }
 
 /// A packet features record.
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct PacketFeatures {
-    /// Server name (for TLS connections)
-    pub sni: String,
-    /// Features,
+    /// 5-tuple
+    pub five_tuple: FiveTuple,
+    /// Starting UNIX timestamp
+    pub ts: i64,
+    /// Features
     pub packets: Vec<PacketFeature>,
 }
 
 impl PacketFeatures {}
 
-impl Serialize for PacketFeatures {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("PacketFeatures", 2)?;
-        state.serialize_field("sni", &self.sni)?;
-        state.serialize_field("fts", &self.packets)?;
-        state.end()
-    }
-}
+// impl Serialize for PacketFeatures {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: Serializer,
+//     {
+//         let mut state = serializer.serialize_struct("PacketFeatures", 3)?;
+//         state.serialize_field("sni", &self.sni)?;
+//         state.serialize_field("fts", &self.packets)?;
+//         state.end()
+//     }
+// }
 
 impl fmt::Display for PacketFeatures {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}: {} packets",
-            self.sni, self.packets.len(),
+            "{}: ts: {}, {} packets",
+            self.five_tuple,
+            self.ts,
+            self.packets.len(),
         )?;
         Ok(())
     }
@@ -114,8 +111,9 @@ impl Subscribable for PacketFeatures {
 /// public. Documentation is hidden by default to avoid confusing users.
 #[doc(hidden)]
 pub struct TrackedPacketFeatures {
+    five_tuple: FiveTuple,
+    ts: i64,
     start_tsc: u64,
-    sni: String,
     packets: Vec<PacketFeature>,
 }
 
@@ -126,16 +124,16 @@ impl TrackedPacketFeatures {
             self.packets.push(packet);
         }
     }
-
 }
 
 impl Trackable for TrackedPacketFeatures {
     type Subscribed = PacketFeatures;
 
-    fn new(_five_tuple: FiveTuple) -> Self {
+    fn new(five_tuple: FiveTuple) -> Self {
         TrackedPacketFeatures {
+            five_tuple,
+            ts: Utc::now().timestamp(),
             start_tsc: unsafe { rte_rdtsc() },
-            sni: String::new(),
             packets: vec![],
         }
     }
@@ -144,10 +142,8 @@ impl Trackable for TrackedPacketFeatures {
         self.update(pdu);
     }
 
-    fn on_match(&mut self, session: Session, _subscription: &Subscription<Self::Subscribed>) {
-        if let SessionData::Tls(tls) = session.data {
-            self.sni = tls.sni().to_string();
-        }
+    fn on_match(&mut self, _session: Session, _subscription: &Subscription<Self::Subscribed>) {
+        // do nothing, stay tracked
     }
 
     fn post_match(&mut self, pdu: L4Pdu, _subscription: &Subscription<Self::Subscribed>) {
@@ -156,57 +152,28 @@ impl Trackable for TrackedPacketFeatures {
 
     fn on_terminate(&mut self, subscription: &Subscription<Self::Subscribed>) {
         let conn = PacketFeatures {
-            sni: self.sni.clone(),
+            five_tuple: self.five_tuple,
+            ts: self.ts,
             packets: self.packets.clone(),
         };
         subscription.invoke(conn);
     }
 
     fn early_terminate(&self) -> bool {
-        self.packets.len() >= 2048
+        // self.packets.len() >= 2048
+        false
     }
 }
-
 
 /// Subset of packet features
 #[derive(Debug, Clone)]
 pub struct PacketFeature {
-    /// direction 1 for up, 0 for down
+    /// direction 1 for client->server, 0 for server->client
     pub dir: u32,
     /// time offset from start of connection in ns
-    pub delta_ns: u32,
-
-    pub ip_ihl: u32,
-    pub ip_dscp: u32,
-    pub ip_ecn: u32,
-    pub ip_total_length: u32,
-    pub ip_id: u32,
-    pub ip_flags_rf: u32,
-    pub ip_flags_df: u32,
-    pub ip_flags_mf: u32,
-    pub ip_fragment_offset: u32,
-    pub ip_ttl: u32,
-    pub ip_protocol: u32,
-    pub ip_header_checksum: u32,
-    pub ip_src_addr: u32,
-    pub ip_dst_addr: u32,
-    pub tcp_src_port: u32,
-    pub tcp_dst_port: u32,
-    pub tcp_seq_num: u32,
-    pub tcp_ack_num: u32,
-    pub tcp_data_offset: u32,
-    pub tcp_reserved: u32,
-    pub tcp_flags_cwr: u32,
-    pub tcp_flags_ece: u32,
-    pub tcp_flags_urg: u32,
-    pub tcp_flags_ack: u32,
-    pub tcp_flags_psh: u32,
-    pub tcp_flags_rst: u32,
-    pub tcp_flags_syn: u32,
-    pub tcp_flags_fin: u32,
-    pub tcp_window_size: u32,
-    pub tcp_checksum: u32,
-    pub tcp_urgent_ptr: u32,
+    pub offset: u32,
+    /// size of IP packet (IPv4 total length)
+    pub sz: u32,
 }
 
 impl Serialize for PacketFeature {
@@ -216,38 +183,8 @@ impl Serialize for PacketFeature {
     {
         let mut arr = serializer.serialize_seq(Some(33))?;
         arr.serialize_element(&self.dir)?;
-        arr.serialize_element(&self.delta_ns)?;
-        arr.serialize_element(&self.ip_ihl)?;
-        arr.serialize_element(&self.ip_dscp)?;
-        arr.serialize_element(&self.ip_ecn)?;
-        arr.serialize_element(&self.ip_total_length)?;
-        arr.serialize_element(&self.ip_id)?;
-        arr.serialize_element(&self.ip_flags_rf)?;
-        arr.serialize_element(&self.ip_flags_df)?;
-        arr.serialize_element(&self.ip_flags_mf)?;
-        arr.serialize_element(&self.ip_fragment_offset)?;
-        arr.serialize_element(&self.ip_ttl)?;
-        arr.serialize_element(&self.ip_protocol)?;
-        arr.serialize_element(&self.ip_header_checksum)?;
-        arr.serialize_element(&self.ip_src_addr)?;
-        arr.serialize_element(&self.ip_dst_addr)?;
-        arr.serialize_element(&self.tcp_src_port)?;
-        arr.serialize_element(&self.tcp_dst_port)?;
-        arr.serialize_element(&self.tcp_seq_num)?;
-        arr.serialize_element(&self.tcp_ack_num)?;
-        arr.serialize_element(&self.tcp_data_offset)?;
-        arr.serialize_element(&self.tcp_reserved)?;
-        arr.serialize_element(&self.tcp_flags_cwr)?;
-        arr.serialize_element(&self.tcp_flags_ece)?;
-        arr.serialize_element(&self.tcp_flags_urg)?;
-        arr.serialize_element(&self.tcp_flags_ack)?;
-        arr.serialize_element(&self.tcp_flags_psh)?;
-        arr.serialize_element(&self.tcp_flags_rst)?;
-        arr.serialize_element(&self.tcp_flags_syn)?;
-        arr.serialize_element(&self.tcp_flags_fin)?;
-        arr.serialize_element(&self.tcp_window_size)?;
-        arr.serialize_element(&self.tcp_checksum)?;
-        arr.serialize_element(&self.tcp_urgent_ptr)?;
+        arr.serialize_element(&self.offset)?;
+        arr.serialize_element(&self.sz)?;
         arr.end()
     }
 }
@@ -258,44 +195,11 @@ impl PacketFeature {
         let delta_ns = ((curr_tsc.saturating_sub(start_tsc)) as f64 / *TSC_HZ * 1e9) as u32;
         let mbuf: &Mbuf = segment.mbuf_ref();
         let eth = mbuf.parse_to::<Ethernet>()?;
-        
         let ipv4 = eth.parse_to::<Ipv4>()?;
-
-        let tcp = ipv4.parse_to::<Tcp>()?; 
         let packet = PacketFeature {
             dir: segment.dir.into(),
-            delta_ns,
-            ip_ihl: ipv4.ihl().into(),
-            ip_dscp: ipv4.dscp().into(),
-            ip_ecn: ipv4.ecn().into(),
-            ip_total_length: ipv4.total_length().into(),
-            ip_id: ipv4.identification().into(),
-            ip_flags_rf: ipv4.rf().into(),
-            ip_flags_df: ipv4.df().into(),
-            ip_flags_mf: ipv4.mf().into(),
-            ip_fragment_offset: ipv4.fragment_offset().into(),
-            ip_ttl: ipv4.time_to_live().into(),
-            ip_protocol: ipv4.protocol().into(),
-            ip_header_checksum: ipv4.header_checksum().into(),
-            ip_src_addr: ipv4.src_addr().into(),
-            ip_dst_addr: ipv4.dst_addr().into(),
-            tcp_src_port: tcp.src_port().into(),
-            tcp_dst_port: tcp.dst_port().into(),
-            tcp_seq_num: tcp.seq_no().into(),
-            tcp_ack_num: tcp.ack_no().into(),
-            tcp_data_offset: tcp.data_offset().into(),
-            tcp_reserved: tcp.reserved().into(),
-            tcp_flags_cwr: tcp.cwr().into(),
-            tcp_flags_ece: tcp.ece().into(),
-            tcp_flags_urg: tcp.urg().into(),
-            tcp_flags_ack: tcp.ack().into(),
-            tcp_flags_psh: tcp.psh().into(),
-            tcp_flags_rst: tcp.rst().into(),
-            tcp_flags_syn: tcp.syn().into(),
-            tcp_flags_fin: tcp.fin().into(),
-            tcp_window_size: tcp.window().into(),
-            tcp_checksum: tcp.checksum().into(),
-            tcp_urgent_ptr: tcp.urgent_pointer().into(),
+            offset: delta_ns,
+            sz: ipv4.total_length().into(),
         };
         Ok(packet)
     }
