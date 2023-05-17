@@ -26,23 +26,16 @@ use crate::protocols::packet::Packet;
 use crate::protocols::stream::{ConnParser, Session, SessionData};
 use crate::subscription::{Level, Subscribable, Subscription, Trackable};
 
-// use std::collections::HashMap;
-// use std::collections::HashSet;
 use std::fmt;
-// use std::ops::Index;
 
 use anyhow::Result;
-// use ndarray::Array;
-// use ndarray_stats::SummaryStatisticsExt;
 use serde::ser::{SerializeStruct, Serializer};
 use serde::Serialize;
-// use statrs::statistics::Data;
-// use statrs::statistics::{Distribution, Max, Min, OrderStatistics};
 
 use lazy_static::lazy_static;
 
 lazy_static! {
-    static ref TSC_HZ: f64 = unsafe { rte_get_tsc_hz() as f64 };
+    static ref TSC_HZ: f32 = unsafe { rte_get_tsc_hz() as f32 };
 }
 
 /// A connection features record.
@@ -55,7 +48,7 @@ pub struct ConnFeatures {
     /// Server name (for TLS connections)
     pub sni: String,
     /// Features,
-    pub features: Vec<f64>,
+    pub features: Vec<f32>,
 }
 
 impl ConnFeatures {
@@ -121,28 +114,88 @@ impl Subscribable for ConnFeatures {
 #[doc(hidden)]
 pub struct TrackedConnFeatures {
     sni: String,
-    ctos: FlowFeatures,
-    stoc: FlowFeatures,
+    syn_tsc: i32,
+    syn_ack_tsc: i32,
+    ack_tsc: i32,
+    s_last_tsc: i32,
+    d_last_tsc: i32,
+    s_pkt_cnt: i32,
+    d_pkt_cnt: i32,
+    s_bytes_sum: i32,
+    d_bytes_sum: i32,
+    s_ttl_sum: i32,
+    d_ttl_sum: i32,
+    proto: i32,
 }
 
 impl TrackedConnFeatures {
     #[inline]
-    fn update(&mut self, segment: L4Pdu) {
+    fn update(&mut self, segment: L4Pdu) -> Result<()> {
+        let curr_tsc = unsafe { rte_rdtsc() } as i32;
+        let mbuf = segment.mbuf_ref();
+        let eth = mbuf.parse_to::<Ethernet>()?;
+        let ipv4 = eth.parse_to::<Ipv4>()?;
+            
         if segment.dir {
-            self.ctos.insert_segment(segment);
+            self.s_last_tsc = curr_tsc;
+            self.s_pkt_cnt += 1;
+            self.s_bytes_sum += ipv4.total_length() as i32;
+            self.s_ttl_sum += ipv4.time_to_live() as i32;
+            if self.syn_ack_tsc != -1 && self.ack_tsc == -1 {
+                let tcp = ipv4.parse_to::<Tcp>()?;
+                if tcp.ack() {
+                    self.ack_tsc = curr_tsc;
+                }
+            }
         } else {
-            self.stoc.insert_segment(segment);
+            self.d_last_tsc = curr_tsc;
+            self.d_pkt_cnt += 1;
+            self.d_bytes_sum += ipv4.total_length() as i32;
+            self.d_ttl_sum += ipv4.time_to_live() as i32;
+            if self.syn_ack_tsc == -1 && self.ack_tsc == -1 {
+                let tcp = ipv4.parse_to::<Tcp>()?;
+                if tcp.synack() {
+                    self.syn_ack_tsc = curr_tsc;
+                }
+            }
         }
+        self.proto = ipv4.protocol() as i32;
+        Ok(())
     }
 
     #[inline]
-    fn extract_features(&self) -> Vec<f64> {
-        // up_pkt_cnt, up_pkt_size_mean, up_win_size_mean, up_iat_mean
-        // dn_pkt_cnt, dn_pkt_size_mean, dn_win_size_mean, dn_iat_mean
-        let mut features = vec![];
-        self.ctos.extract_features(&mut features);
-        self.stoc.extract_features(&mut features);
-        features
+    fn extract_features(&self) -> Vec<f32> {
+        let dur = (self.s_last_tsc.max(self.d_last_tsc)).saturating_sub(self.syn_tsc) as f32 / *TSC_HZ;
+        let s_ttl_mean = self.s_ttl_sum as f32 / self.s_pkt_cnt as f32;
+        let d_ttl_mean = self.d_ttl_sum as f32 / self.d_pkt_cnt as f32;
+        let s_load = self.s_bytes_sum as f32 * 8.0 / dur;
+        let d_load = self.d_bytes_sum as f32 * 8.0 / dur;
+        let s_bytes_mean = self.s_bytes_sum as f32 / self.s_pkt_cnt as f32;
+        let d_bytes_mean = self.d_bytes_sum as f32 / self.d_pkt_cnt as f32;
+        let s_iat_mean = self.s_last_tsc.saturating_sub(self.syn_tsc) as f32 / *TSC_HZ / self.s_pkt_cnt as f32;
+        let d_iat_mean = self.d_last_tsc.saturating_sub(self.syn_ack_tsc) as f32 / *TSC_HZ / self.d_pkt_cnt as f32;
+        let syn_ack = self.syn_ack_tsc.saturating_sub(self.syn_tsc) as f32 / *TSC_HZ;
+        let ack_dat = self.ack_tsc.saturating_sub(self.syn_ack_tsc) as f32 / *TSC_HZ;
+        let tcp_rtt = syn_ack + ack_dat;
+        vec![
+            dur,
+            self.proto as f32,
+            self.s_bytes_sum as f32,
+            self.d_bytes_sum as f32,
+            s_ttl_mean,
+            d_ttl_mean,
+            s_load,
+            d_load,
+            self.s_pkt_cnt as f32,
+            self.d_pkt_cnt as f32,
+            s_bytes_mean,
+            d_bytes_mean,
+            s_iat_mean,
+            d_iat_mean,
+            tcp_rtt,
+            syn_ack,
+            ack_dat
+        ]
     }
 }
 
@@ -150,10 +203,21 @@ impl Trackable for TrackedConnFeatures {
     type Subscribed = ConnFeatures;
 
     fn new(_five_tuple: FiveTuple) -> Self {
+        let tsc = unsafe { rte_rdtsc() } as i32;
         TrackedConnFeatures {
             sni: String::new(),
-            ctos: FlowFeatures::new(),
-            stoc: FlowFeatures::new(),
+            syn_tsc: tsc,
+            syn_ack_tsc: -1,
+            ack_tsc: -1,
+            s_last_tsc: tsc,
+            d_last_tsc: -1,
+            s_pkt_cnt: 0,
+            d_pkt_cnt: 0,
+            s_bytes_sum: 0,
+            d_bytes_sum: 0,
+            s_ttl_sum: 0,
+            d_ttl_sum: 0,
+            proto: -1,
         }
     }
 
@@ -168,7 +232,7 @@ impl Trackable for TrackedConnFeatures {
     }
 
     fn post_match(&mut self, pdu: L4Pdu, _subscription: &Subscription<Self::Subscribed>) {
-        self.update(pdu)
+        self.update(pdu);
     }
 
     fn on_terminate(&mut self, subscription: &Subscription<Self::Subscribed>) {
@@ -180,79 +244,7 @@ impl Trackable for TrackedConnFeatures {
     }
 
     fn early_terminate(&self) -> bool {
-        self.ctos.packet_cnt + self.stoc.packet_cnt >= 4
-    }
-}
-
-/// A uni-directional flow.
-#[derive(Debug, Clone, Serialize)]
-pub struct FlowFeatures {
-    /// connection start timestamp
-    pub start_tsc: u32,
-    /// time offset from start of connection in ns
-    pub delta_ns: Vec<u32>,
-    /// number of packets observed in flow
-    pub packet_cnt: u32,
-    /// sum of IP packet lengths
-    pub ip_total_length: u32,
-    /// sum of TCP window sizes
-    pub tcp_window_size: u32,
-}
-
-impl FlowFeatures {
-    fn new() -> Self {
-        FlowFeatures {
-            start_tsc: unsafe { rte_rdtsc() } as u32,
-            delta_ns: vec![],
-            packet_cnt: 0,
-            ip_total_length: 0,
-            tcp_window_size: 0,
-        }
-    }
-
-    #[inline]
-    fn insert_segment(&mut self, segment: L4Pdu) {
-        let mbuf = segment.mbuf_ref();
-        if let Ok(eth) = mbuf.parse_to::<Ethernet>() {
-            if let Ok(ipv4) = eth.parse_to::<Ipv4>() {
-                if let Ok(tcp) = ipv4.parse_to::<Tcp>() {
-                    let curr_tsc = unsafe { rte_rdtsc() } as u32;
-                    let delta_ns =
-                        ((curr_tsc.saturating_sub(self.start_tsc)) as f64 / *TSC_HZ * 1e9) as u32;
-                    self.delta_ns.push(delta_ns);
-                    self.packet_cnt += 1;
-                    self.ip_total_length += ipv4.total_length() as u32;
-                    self.tcp_window_size += tcp.window() as u32;
-                }
-            }
-        }
-    }
-
-    fn extract_features(&self, features: &mut Vec<f64>) {
-        if self.packet_cnt == 0 {
-            features.push(0.0); // packet count
-            features.push(0.0); // mean packet size (bytes)
-            features.push(0.0); // mean window size (window-size units)
-            features.push(0.0); // mean inter-arrival time (ns)
-        } else {
-            let pktsize_mean = self.ip_total_length as f64 / self.packet_cnt as f64;
-            let winsize_mean = self.tcp_window_size as f64 / self.packet_cnt as f64;
-
-            let mut iat_sum = 0.0;
-            let mut cnt = 0;
-            for i in 1..self.delta_ns.len() {
-                iat_sum += (self.delta_ns[i] - self.delta_ns[i - 1]) as f64;
-                cnt += 1;
-            }
-
-            let iat_mean = if cnt > 0 { iat_sum / (cnt as f64) } else { 0.0 };
-
-            features.extend_from_slice(&[
-                self.packet_cnt as f64,
-                pktsize_mean,
-                winsize_mean,
-                iat_mean,
-            ]);
-        }
+        // self.ctos.packet_cnt + self.stoc.packet_cnt >= 4
+        false
     }
 }
