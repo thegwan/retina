@@ -44,30 +44,30 @@ lazy_static! {
 /// does not track payload data. If applicable, Retina internally manages stream reassembly. All
 /// connections are interpreted using flow semantics.
 #[derive(Debug)]
-pub struct ConnFeatures {
+pub struct Features {
     /// Server name (for TLS connections)
     pub sni: String,
     /// Features,
     pub features: Vec<f32>,
 }
 
-impl ConnFeatures {
+impl Features {
    
 }
 
-impl Serialize for ConnFeatures {
+impl Serialize for Features {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("ConnFeatures", 2)?;
+        let mut state = serializer.serialize_struct("Features", 2)?;
         state.serialize_field("sni", &self.sni)?;
         state.serialize_field("fts", &self.features)?;
         state.end()
     }
 }
 
-impl fmt::Display for ConnFeatures {
+impl fmt::Display for Features {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -78,8 +78,8 @@ impl fmt::Display for ConnFeatures {
     }
 }
 
-impl Subscribable for ConnFeatures {
-    type Tracked = TrackedConnFeatures;
+impl Subscribable for Features {
+    type Tracked = TrackedFeatures;
 
     fn level() -> Level {
         Level::Connection
@@ -112,7 +112,7 @@ impl Subscribable for ConnFeatures {
 /// Internal connection state is an associated type of a `pub` trait, and therefore must also be
 /// public. Documentation is hidden by default to avoid confusing users.
 #[doc(hidden)]
-pub struct TrackedConnFeatures {
+pub struct TrackedFeatures {
     sni: String,
     syn_tsc: i32,
     syn_ack_tsc: i32,
@@ -128,7 +128,7 @@ pub struct TrackedConnFeatures {
     proto: i32,
 }
 
-impl TrackedConnFeatures {
+impl TrackedFeatures {
     #[inline]
     fn update(&mut self, segment: L4Pdu) -> Result<()> {
         let curr_tsc = unsafe { rte_rdtsc() } as i32;
@@ -199,12 +199,12 @@ impl TrackedConnFeatures {
     }
 }
 
-impl Trackable for TrackedConnFeatures {
-    type Subscribed = ConnFeatures;
+impl Trackable for TrackedFeatures {
+    type Subscribed = Features;
 
     fn new(_five_tuple: FiveTuple) -> Self {
         let tsc = unsafe { rte_rdtsc() } as i32;
-        TrackedConnFeatures {
+        TrackedFeatures {
             sni: String::new(),
             syn_tsc: tsc,
             syn_ack_tsc: -1,
@@ -222,7 +222,7 @@ impl Trackable for TrackedConnFeatures {
     }
 
     fn pre_match(&mut self, pdu: L4Pdu, _session_id: Option<usize>) {
-        self.update(pdu);
+        self.update(pdu).unwrap_or(());
     }
 
     fn on_match(&mut self, session: Session, _subscription: &Subscription<Self::Subscribed>) {
@@ -232,11 +232,11 @@ impl Trackable for TrackedConnFeatures {
     }
 
     fn post_match(&mut self, pdu: L4Pdu, _subscription: &Subscription<Self::Subscribed>) {
-        self.update(pdu);
+        self.update(pdu).unwrap_or(());
     }
 
     fn on_terminate(&mut self, subscription: &Subscription<Self::Subscribed>) {
-        let conn = ConnFeatures {
+        let conn = Features {
             sni: self.sni.clone(),
             features: self.extract_features(),
         };

@@ -1,5 +1,5 @@
 use retina_core::config::load_config;
-use retina_core::subscription::ConnFeatures;
+use retina_core::subscription::Features;
 use retina_core::Runtime;
 use retina_filtergen::filter;
 
@@ -8,7 +8,6 @@ use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
-use std::time::Instant;
 
 use anyhow::Result;
 use clap::Parser;
@@ -43,7 +42,7 @@ fn main() -> Result<()> {
     let cnt = AtomicUsize::new(0);
     let clf = load_clf(&args.model_file)?;
 
-    let callback = |conn: ConnFeatures| {
+    let callback = |conn: Features| {
         //println!("{}", conn.sni);
         let features = conn.features;
         let instance = DenseMatrix::new(1, features.len(), features, false);
