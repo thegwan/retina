@@ -44,7 +44,7 @@ nb_memory_channels = 6
     
     [online.ports.sink]
         core = 9
-        nb_buckets = 512
+        nb_buckets = 64
 
 [conntrack]
     max_connections = 10_000_000
