@@ -23,7 +23,7 @@ use crate::protocols::packet::ethernet::Ethernet;
 use crate::protocols::packet::ipv4::Ipv4;
 use crate::protocols::packet::tcp::Tcp;
 use crate::protocols::packet::Packet;
-use crate::protocols::stream::{ConnParser, Session, SessionData};
+use crate::protocols::stream::{ConnParser, Session};
 use crate::subscription::{Level, Subscribable, Subscription, Trackable};
 
 use std::fmt;
@@ -45,23 +45,21 @@ lazy_static! {
 /// connections are interpreted using flow semantics.
 #[derive(Debug)]
 pub struct Features {
-    /// Server name (for TLS connections)
-    pub sni: String,
+    // /// Server name (for TLS connections)
+    // pub sni: String,
     /// Features,
     pub features: Vec<f32>,
 }
 
-impl Features {
-   
-}
+impl Features {}
 
 impl Serialize for Features {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("Features", 2)?;
-        state.serialize_field("sni", &self.sni)?;
+        let mut state = serializer.serialize_struct("Features", 1)?;
+        // state.serialize_field("sni", &self.sni)?;
         state.serialize_field("fts", &self.features)?;
         state.end()
     }
@@ -69,11 +67,7 @@ impl Serialize for Features {
 
 impl fmt::Display for Features {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}: {}> {}<",
-            self.sni, self.features[0], self.features[4],
-        )?;
+        write!(f, "{:?}", self.features,)?;
         Ok(())
     }
 }
@@ -113,7 +107,7 @@ impl Subscribable for Features {
 /// public. Documentation is hidden by default to avoid confusing users.
 #[doc(hidden)]
 pub struct TrackedFeatures {
-    sni: String,
+    // sni: String,
     syn_tsc: i32,
     syn_ack_tsc: i32,
     ack_tsc: i32,
@@ -135,7 +129,7 @@ impl TrackedFeatures {
         let mbuf = segment.mbuf_ref();
         let eth = mbuf.parse_to::<Ethernet>()?;
         let ipv4 = eth.parse_to::<Ipv4>()?;
-            
+
         if segment.dir {
             self.s_last_tsc = curr_tsc;
             self.s_pkt_cnt += 1;
@@ -165,15 +159,19 @@ impl TrackedFeatures {
 
     #[inline]
     fn extract_features(&self) -> Vec<f32> {
-        let dur = (self.s_last_tsc.max(self.d_last_tsc)).saturating_sub(self.syn_tsc) as f32 / *TSC_HZ;
+        let dur =
+            (self.s_last_tsc.max(self.d_last_tsc)).saturating_sub(self.syn_tsc) as f32 / *TSC_HZ;
         let s_ttl_mean = self.s_ttl_sum as f32 / self.s_pkt_cnt as f32;
         let d_ttl_mean = self.d_ttl_sum as f32 / self.d_pkt_cnt as f32;
         let s_load = self.s_bytes_sum as f32 * 8.0 / dur;
         let d_load = self.d_bytes_sum as f32 * 8.0 / dur;
         let s_bytes_mean = self.s_bytes_sum as f32 / self.s_pkt_cnt as f32;
         let d_bytes_mean = self.d_bytes_sum as f32 / self.d_pkt_cnt as f32;
-        let s_iat_mean = self.s_last_tsc.saturating_sub(self.syn_tsc) as f32 / *TSC_HZ / self.s_pkt_cnt as f32;
-        let d_iat_mean = self.d_last_tsc.saturating_sub(self.syn_ack_tsc) as f32 / *TSC_HZ / self.d_pkt_cnt as f32;
+        let s_iat_mean =
+            self.s_last_tsc.saturating_sub(self.syn_tsc) as f32 / *TSC_HZ / self.s_pkt_cnt as f32;
+        let d_iat_mean = self.d_last_tsc.saturating_sub(self.syn_ack_tsc) as f32
+            / *TSC_HZ
+            / self.d_pkt_cnt as f32;
         let syn_ack = self.syn_ack_tsc.saturating_sub(self.syn_tsc) as f32 / *TSC_HZ;
         let ack_dat = self.ack_tsc.saturating_sub(self.syn_ack_tsc) as f32 / *TSC_HZ;
         let tcp_rtt = syn_ack + ack_dat;
@@ -194,7 +192,7 @@ impl TrackedFeatures {
             d_iat_mean,
             tcp_rtt,
             syn_ack,
-            ack_dat
+            ack_dat,
         ]
     }
 }
@@ -205,7 +203,7 @@ impl Trackable for TrackedFeatures {
     fn new(_five_tuple: FiveTuple) -> Self {
         let tsc = unsafe { rte_rdtsc() } as i32;
         TrackedFeatures {
-            sni: String::new(),
+            // sni: String::new(),
             syn_tsc: tsc,
             syn_ack_tsc: -1,
             ack_tsc: -1,
@@ -225,10 +223,10 @@ impl Trackable for TrackedFeatures {
         self.update(pdu).unwrap_or(());
     }
 
-    fn on_match(&mut self, session: Session, _subscription: &Subscription<Self::Subscribed>) {
-        if let SessionData::Tls(tls) = session.data {
-            self.sni = tls.sni().to_string();
-        }
+    fn on_match(&mut self, _session: Session, _subscription: &Subscription<Self::Subscribed>) {
+        // if let SessionData::Tls(tls) = session.data {
+        //     self.sni = tls.sni().to_string();
+        // }
     }
 
     fn post_match(&mut self, pdu: L4Pdu, _subscription: &Subscription<Self::Subscribed>) {
@@ -237,7 +235,7 @@ impl Trackable for TrackedFeatures {
 
     fn on_terminate(&mut self, subscription: &Subscription<Self::Subscribed>) {
         let conn = Features {
-            sni: self.sni.clone(),
+            // sni: self.sni.clone(),
             features: self.extract_features(),
         };
         subscription.invoke(conn);

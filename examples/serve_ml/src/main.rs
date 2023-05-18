@@ -28,7 +28,6 @@ struct Args {
     model_file: PathBuf,
     #[clap(short, long, parse(from_os_str), value_name = "OUT_FILE")]
     outfile: PathBuf,
-
 }
 
 //#[filter("ipv4 and tls and (tls.sni ~ 'nflxvideo\\.net$' or tls.sni ~ 'row\\.aiv-cdn\\.net$' or tls.sni ~ 'media\\.dssott\\.com$' or tls.sni ~ 'vod-adaptive\\.akamaized\\.net$' or tls.sni ~ 'hls\\.ttvnw\\.net$' or tls.sni ~ 'aoc\\.tv\\.apple\\.com$' or tls.sni ~ 'airspace-.*\\.cbsivideo\\.com$' or tls.sni ~ 'prod\\.gccrunchyroll\\.com$' or tls.sni ~ 'vrv\\.akamaized\\.net$')")]
@@ -46,13 +45,14 @@ fn main() -> Result<()> {
         //println!("{}", conn.sni);
         let features = conn.features;
         let instance = DenseMatrix::new(1, features.len(), features, false);
-     //   let start = Instant::now();
+        //   let start = Instant::now();
         let pred = clf.predict(&instance).unwrap();
-     //   println!("predict: {:?}", start.elapsed());
+        //   println!("predict: {:?}", start.elapsed());
         //println!("{:?}", pred);
 
         cnt.fetch_add(1, Ordering::Relaxed);
-        let res = serde_json::to_string(&(conn.sni, pred[0])).unwrap();
+        // let res = serde_json::to_string(&(conn.sni, pred[0])).unwrap();
+        let res = serde_json::to_string(&pred[0]).unwrap();
         let mut wtr = file.lock().unwrap();
         wtr.write_all(res.as_bytes()).unwrap();
         wtr.write_all(b"\n").unwrap();
