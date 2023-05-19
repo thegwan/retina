@@ -29,16 +29,8 @@ impl Timers {
             timers.insert(name.to_string(), timer);
         }
         let mut timers = IndexMap::new();
-        init_hist(&mut timers, "process");
-        init_hist(&mut timers, "packet_filter");
-        init_hist(&mut timers, "conn_track");
-        init_hist(&mut timers, "reassembly");
-        init_hist(&mut timers, "flush");
-        init_hist(&mut timers, "applayer_parse");
-        init_hist(&mut timers, "stream_filter");
-        init_hist(&mut timers, "builder");
-        init_hist(&mut timers, "callback");
-        init_hist(&mut timers, "remove_inactive");
+        init_hist(&mut timers, "update");
+        init_hist(&mut timers, "extract_features");
         Timers(timers)
     }
 
