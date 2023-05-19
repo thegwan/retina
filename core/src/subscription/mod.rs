@@ -5,24 +5,24 @@
 //! parameter and immutably borrows values from the environment. Built-in subscribable types can
 //! be customized within the framework to provide additional data to the callback if needed.
 
-pub mod connection;
-pub mod connection_frame;
-pub mod dns_transaction;
+// pub mod connection;
+// pub mod connection_frame;
+// pub mod dns_transaction;
 pub mod features;
-pub mod frame;
-pub mod http_transaction;
-pub mod tls_handshake;
-pub mod zc_frame;
+// pub mod frame;
+// pub mod http_transaction;
+// pub mod tls_handshake;
+// pub mod zc_frame;
 
 // Re-export subscribable types for more convenient usage.
-pub use self::connection::Connection;
-pub use self::connection_frame::ConnectionFrame;
-pub use self::dns_transaction::DnsTransaction;
+// pub use self::connection::Connection;
+// pub use self::connection_frame::ConnectionFrame;
+// pub use self::dns_transaction::DnsTransaction;
 pub use self::features::Features;
-pub use self::frame::Frame;
-pub use self::http_transaction::HttpTransaction;
-pub use self::tls_handshake::TlsHandshake;
-pub use self::zc_frame::ZcFrame;
+// pub use self::frame::Frame;
+// pub use self::http_transaction::HttpTransaction;
+// pub use self::tls_handshake::TlsHandshake;
+// pub use self::zc_frame::ZcFrame;
 
 use crate::conntrack::conn_id::FiveTuple;
 use crate::conntrack::pdu::L4Pdu;
@@ -76,7 +76,7 @@ pub trait Trackable {
     fn new(five_tuple: FiveTuple) -> Self;
 
     /// Update tracked subscription data prior to a full filter match.
-    fn pre_match(&mut self, pdu: L4Pdu, session_id: Option<usize>);
+    fn pre_match(&mut self, pdu: L4Pdu, session_id: Option<usize>, subscription: &Subscription<Self::Subscribed>);
 
     /// Update tracked subscription data on a full filter match.
     fn on_match(&mut self, session: Session, subscription: &Subscription<Self::Subscribed>);

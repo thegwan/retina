@@ -75,7 +75,7 @@ where
             }
             ProbeRegistryResult::None => {
                 // conn_parser remains Unknown
-                self.sdata.pre_match(pdu, None);
+                self.sdata.pre_match(pdu, None, subscription);
                 match subscription.filter_conn(&self.cdata) {
                     FilterResult::MatchTerminal(_idx) => {
                         self.sdata.on_match(Session::default(), subscription);
@@ -90,7 +90,7 @@ where
                 }
             }
             ProbeRegistryResult::Unsure => {
-                self.sdata.pre_match(pdu, None);
+                self.sdata.pre_match(pdu, None, subscription);
             }
         }
     }
@@ -98,7 +98,7 @@ where
     fn on_parse(&mut self, pdu: L4Pdu, subscription: &Subscription<T::Subscribed>) {
         match self.cdata.conn_parser.parse(&pdu) {
             ParseResult::Done(id) => {
-                self.sdata.pre_match(pdu, Some(id));
+                self.sdata.pre_match(pdu, Some(id), subscription);
                 if let Some(session) = self.cdata.conn_parser.remove_session(id) {
                     if subscription.filter_session(&session, self.cdata.conn_term_node) {
                         self.sdata.on_match(session, subscription);
@@ -112,10 +112,10 @@ where
                 }
             }
             ParseResult::Continue(id) => {
-                self.sdata.pre_match(pdu, Some(id));
+                self.sdata.pre_match(pdu, Some(id), subscription);
             }
             ParseResult::Skipped => {
-                self.sdata.pre_match(pdu, None);
+                self.sdata.pre_match(pdu, None, subscription);
             }
         }
     }

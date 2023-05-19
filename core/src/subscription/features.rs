@@ -220,7 +220,7 @@ impl Trackable for TrackedFeatures {
         }
     }
 
-    fn pre_match(&mut self, pdu: L4Pdu, _session_id: Option<usize>) {
+    fn pre_match(&mut self, pdu: L4Pdu, _session_id: Option<usize>, _subscription: &Subscription<Self::Subscribed>) {
         self.update(pdu).unwrap_or(());
     }
 
