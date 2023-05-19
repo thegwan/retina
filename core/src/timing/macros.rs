@@ -5,7 +5,7 @@ macro_rules! tsc_start {
     };
 }
 
-macro_rules! tsc_record {
+macro_rules! tsc_elapsed {
     ( $timers:expr, $timer:expr, $start:ident ) => {
         #[cfg(feature = "timing")]
         $timers.record($timer, unsafe { $crate::dpdk::rte_rdtsc() } - $start, 1);
@@ -19,3 +19,5 @@ macro_rules! tsc_record {
         );
     };
 }
+
+
