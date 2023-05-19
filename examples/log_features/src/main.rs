@@ -1,5 +1,5 @@
 use retina_core::config::load_config;
-use retina_core::subscription::Features;
+use retina_core::subscription::features::Features;
 use retina_core::Runtime;
 use retina_filtergen::filter;
 
