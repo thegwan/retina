@@ -31,6 +31,7 @@ impl Timers {
         let mut timers = IndexMap::new();
         init_hist(&mut timers, "update");
         init_hist(&mut timers, "extract_features");
+        init_hist(&mut timers, "compute_cycles");
         Timers(timers)
     }
 

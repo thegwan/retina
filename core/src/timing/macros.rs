@@ -20,4 +20,19 @@ macro_rules! tsc_elapsed {
     };
 }
 
+macro_rules! tsc_record {
+    ( $timers:expr, $timer:expr, $time:expr ) => {
+        #[cfg(feature = "timing")]
+        $timers.record($timer, $time, 1);
+    };
+    ( $timers:expr, $timer:expr, $time:expr, $sample:literal ) => {
+        #[cfg(feature = "timing")]
+        $timers.record(
+            $timer,
+            $time,
+            $sample,
+        );
+    };
+}
+
 
