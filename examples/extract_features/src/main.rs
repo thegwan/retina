@@ -38,18 +38,18 @@ fn main() -> Result<()> {
     let mut runtime = Runtime::new(config.clone(), filter, callback)?;
     runtime.run();
 
-    let data = Data {
+    let output = Output {
         config,
         num_conns: cnt.load(Ordering::SeqCst),
     };
-    if let Ok(serialized) = serde_json::to_string(&data) {
+    if let Ok(serialized) = serde_json::to_string(&output) {
         file.write_all(serialized.as_bytes())?;
     }
     println!("Done. Extract features from {:?} connections", cnt);
     Ok(())
 }
 #[derive(Debug, Serialize)]
-struct Data {
+struct Output {
     config: RuntimeConfig,
     num_conns: usize,
 }

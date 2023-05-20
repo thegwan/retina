@@ -1,9 +1,9 @@
-# Connection Features Logger
+# Connection Features Extractor
 
-Demonstrates logging connection features to a file.
+Extracts connection features and does nothing.
 
 ### Build and run
 ```
-cargo build --release --bin log_features
-sudo env LD_LIBRARY_PATH=$LD_LIBRARY_PATH RUST_LOG=error ./target/release/log_features -c <path/to/config.toml>
+cargo build --release --bin extract_features
+sudo env LD_LIBRARY_PATH=$LD_LIBRARY_PATH RUST_LOG=error ./target/release/extract_features -c <path/to/config.toml> -o <path/to/output.json>
 ```
