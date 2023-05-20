@@ -90,6 +90,8 @@ impl Subscribable for Features {
 /// public. Documentation is hidden by default to avoid confusing users.
 #[doc(hidden)]
 pub struct TrackedFeatures {
+    #[cfg(feature = "timing")]
+    compute_cycles: u64,
     // sni: String,
       syn_tsc: i32,
       syn_ack_tsc: i32,
@@ -103,8 +105,6 @@ pub struct TrackedFeatures {
       s_ttl_sum: i32,
       d_ttl_sum: i32,
       proto: i32,
-      #[cfg(feature = "timing")]
-      compute_cycles: u64,
 }
 
 impl TrackedFeatures {
@@ -232,6 +232,8 @@ impl Trackable for TrackedFeatures {
     fn new(_five_tuple: FiveTuple) -> Self {
         let tsc = unsafe { rte_rdtsc() } as i32;
         TrackedFeatures {
+            #[cfg(feature = "timing")]
+            compute_cycles: 0,
             // sni: String::new(),
             syn_tsc: tsc,
             syn_ack_tsc: -1,
@@ -245,8 +247,6 @@ impl Trackable for TrackedFeatures {
             s_ttl_sum: 0,
             d_ttl_sum: 0,
             proto: -1,
-            #[cfg(feature = "timing")]
-            compute_cycles: 0,
         }
     }
 

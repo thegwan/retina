@@ -90,6 +90,8 @@ impl Subscribable for Features {
 /// public. Documentation is hidden by default to avoid confusing users.
 #[doc(hidden)]
 pub struct TrackedFeatures {
+    #[cfg(feature = "timing")]
+    compute_cycles: u64,
     // sni: String,
       syn_tsc: i32,
     //   syn_ack_tsc: i32,
@@ -108,6 +110,8 @@ pub struct TrackedFeatures {
 impl TrackedFeatures {
     #[inline]
     fn update(&mut self, segment: L4Pdu) -> Result<()> {
+        #[cfg(feature = "timing")]
+        let start_tsc = unsafe { rte_rdtsc() };
         let curr_tsc = unsafe { rte_rdtsc() } as i32;
         // let mbuf = segment.mbuf_ref();
         // let eth = mbuf.parse_to::<Ethernet>()?;
@@ -137,11 +141,17 @@ impl TrackedFeatures {
             // }
         }
         // self.proto = ipv4.protocol() as i32;
+        #[cfg(feature = "timing")]
+        {
+            self.compute_cycles += unsafe { rte_rdtsc() } - start_tsc;
+        }
         Ok(())
     }
 
     #[inline]
-    fn extract_features(&self) -> Vec<f32> {
+    fn extract_features(&mut self) -> Vec<f32> {
+        #[cfg(feature = "timing")]
+        let start_tsc = unsafe { rte_rdtsc() };
         let dur =
             (self.s_last_tsc.max(self.d_last_tsc)).saturating_sub(self.syn_tsc) as f32 / *TSC_HZ;
         // let s_ttl_mean = self.s_ttl_sum as f32 / self.s_pkt_cnt as f32;
@@ -158,7 +168,7 @@ impl TrackedFeatures {
         // let syn_ack = self.syn_ack_tsc.saturating_sub(self.syn_tsc) as f32 / *TSC_HZ;
         // let ack_dat = self.ack_tsc.saturating_sub(self.syn_ack_tsc) as f32 / *TSC_HZ;
         // let tcp_rtt = syn_ack + ack_dat;
-        vec![
+        let features = vec![
             dur,
             // self.proto as f32,
             // self.s_bytes_sum as f32,
@@ -176,8 +186,12 @@ impl TrackedFeatures {
             // tcp_rtt,
             // syn_ack,
             // ack_dat,
-        ]
-//        vec![]
+        ];
+        #[cfg(feature = "timing")]
+        {
+        self.compute_cycles += unsafe { rte_rdtsc() } - start_tsc;
+        }
+        features
     }
 }
 
@@ -187,6 +201,8 @@ impl Trackable for TrackedFeatures {
     fn new(_five_tuple: FiveTuple) -> Self {
         let tsc = unsafe { rte_rdtsc() } as i32;
         TrackedFeatures {
+            #[cfg(feature = "timing")]
+            compute_cycles: 0,
             // sni: String::new(),
             syn_tsc: tsc,
             // syn_ack_tsc: -1,
@@ -229,6 +245,7 @@ impl Trackable for TrackedFeatures {
             // sni: self.sni.clone(),
             features,
         };
+        tsc_record!(subscription.timers, "compute_cycles", self.compute_cycles);
         subscription.invoke(conn);
     }
 
