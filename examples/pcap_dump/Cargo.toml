@@ -8,9 +8,13 @@ edition = "2021"
 anyhow = "1.0.70"
 clap = { version = "3.2.23", features = ["derive"] }
 env_logger = "0.8.4"
+ipcrypt = "0.1.0"
 lazy_static = "1.4.0"
 log = { version = "0.4", features = ["release_max_level_info"] }
 pcap-file = "1.1.1"
 regex = "1.7.3"
 retina-core = { path = "../../core" }
 retina-filtergen = { path = "../../filtergen" }
+
+[dependencies.pnet]
+version = "0.29.0"
