@@ -101,6 +101,8 @@ pub struct TrackedConnectionFrame {
     five_tuple: FiveTuple,
     /// Buffers packets in the connection prior to a filter match.
     buf: Vec<ConnectionFrame>,
+    /// Total count of packets in connection.
+    cnt: usize,
 }
 
 impl Trackable for TrackedConnectionFrame {
@@ -110,12 +112,14 @@ impl Trackable for TrackedConnectionFrame {
         TrackedConnectionFrame {
             five_tuple,
             buf: vec![],
+            cnt: 0,
         }
     }
 
     fn pre_match(&mut self, pdu: L4Pdu, _session_id: Option<usize>) {
         self.buf
             .push(ConnectionFrame::new(self.five_tuple, pdu.mbuf_ref()));
+        self.cnt += 1;
     }
 
     fn on_match(&mut self, _session: Session, subscription: &Subscription<Self::Subscribed>) {
@@ -126,6 +130,7 @@ impl Trackable for TrackedConnectionFrame {
 
     fn post_match(&mut self, pdu: L4Pdu, subscription: &Subscription<Self::Subscribed>) {
         subscription.invoke(ConnectionFrame::new(self.five_tuple, pdu.mbuf_ref()));
+        self.cnt += 1;
     }
 
     fn on_terminate(&mut self, subscription: &Subscription<Self::Subscribed>) {
@@ -135,6 +140,6 @@ impl Trackable for TrackedConnectionFrame {
     }
 
     fn early_terminate(&self) -> bool {
-        false
+        self.cnt >= 15
     }
 }

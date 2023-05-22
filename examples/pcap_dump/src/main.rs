@@ -1,5 +1,5 @@
 use retina_core::config::load_config;
-use retina_core::subscription::ZcFrame;
+use retina_core::subscription::ConnectionFrame;
 use retina_core::Runtime;
 use retina_filtergen::filter;
 
@@ -25,7 +25,7 @@ struct Args {
     outfile: PathBuf,
 }
 
-#[filter("ipv4.total_length in 128..256 and ipv4.src_addr in 72.0.0.0/8")]
+#[filter("ipv4 and tls")]
 fn main() -> Result<()> {
     env_logger::init();
     let args = Args::parse();
@@ -34,10 +34,10 @@ fn main() -> Result<()> {
     let file = File::create(&args.outfile)?;
     let pcap_writer = Mutex::new(PcapWriter::new(file)?);
 
-    let callback = |pkt: ZcFrame| {
+    let callback = |pkt: ConnectionFrame| {
         let mut pcap_writer = pcap_writer.lock().unwrap();
         pcap_writer
-            .write(1, 0, pkt.data(), pkt.data_len() as u32)
+            .write(1, 0, &pkt.data, pkt.data.len() as u32)
             .unwrap();
     };
     let mut runtime = Runtime::new(config, filter, callback)?;
