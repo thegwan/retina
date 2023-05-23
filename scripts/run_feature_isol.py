@@ -1,6 +1,7 @@
 import subprocess, re, os
 import toml
 import argparse
+from pprint import pprint
 
 # ANSI color codes
 BLACK = '\033[30m'
@@ -113,22 +114,30 @@ def main(args):
     directory = args.directory
     release_mode = args.release
     online_mode = args.online
+
+    errors = {}
     for feature in ft_names:
         print(CYAN + BOLD + feature + RESET)
         old_text = 'use retina_core::subscription::features::Features;'
         new_text = f'use retina_core::subscription::features_{feature}::Features;'
         if not modify_binary('/home/gerryw/retina/scripts/base_extract_features.rs', old_text, new_text):
             print(f'Failed to modify template for `{feature}`, skipping...')
+            errors[feature] = 'modify'
         if not compile_binary(release=release_mode):
             print(f'Failed to compile for `{feature}`, skipping...')
+            errors[feature] = 'compile'
             continue
         mem_profiler = profile_memory(directory, feature)
         if not run_binary(directory, feature, release=release_mode, online=online_mode):
             print(f'Failed to run {feature}, skipping...')
+            errors[feature] = 'runtime'
             continue
         mem_profiler.terminate()
         # terminate won't kill the child top process since it is running with shell=True
         os.system(f'pkill -f top')
+
+    for error in errors.items():
+        print(RED + f'Error: {str(error)}' + RESET)
             
             
 
