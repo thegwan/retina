@@ -29,6 +29,12 @@ pub fn load_config<P: AsRef<Path>>(path: P) -> RuntimeConfig {
         );
         panic!();
     }
+    if let Some(timing_config) = &config.timing {
+        if timing_config.sample_every < 1 {
+            log::error!("Sample rate ({}) must be >= 1", timing_config.sample_every);
+            panic!();
+        }
+    }
     config
 }
 
@@ -87,6 +93,11 @@ pub struct RuntimeConfig {
 
     /// Connection tracking settings.
     pub conntrack: ConnTrackConfig,
+
+    #[doc(hidden)]
+    /// Runtime filter for testing purposes.
+    #[serde(default = "default_timing")]
+    pub timing: Option<TimingConfig>,
 
     #[doc(hidden)]
     /// Runtime filter for testing purposes.
@@ -176,6 +187,10 @@ fn default_offline() -> Option<OfflineConfig> {
     None
 }
 
+fn default_timing() -> Option<TimingConfig> {
+    None
+}
+
 fn default_filter() -> Option<String> {
     None
 }
@@ -208,6 +223,7 @@ impl Default for RuntimeConfig {
                 init_rst: false,
                 init_data: false,
             },
+            timing: None,
             filter: None,
         }
     }
@@ -689,4 +705,59 @@ fn default_init_rst() -> bool {
 
 fn default_init_data() -> bool {
     false
+}
+
+/* --------------------------------------------------------------------------------- */
+
+/// Timing options.
+///
+/// ## Remarks
+/// The timing feature must be enabled to record cycle timer information, and profiling
+/// code must be added inline. See the `timing` module for more information. Build with
+/// `--features timing`.
+///
+/// ## Example
+/// ```toml
+/// [timing]
+///     directory = "./timing.csv"
+///     summarize = false
+///     sample_every = 10
+/// ```
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct TimingConfig {
+    /// Timing features outfile path. If timing features are enabled, Retina will write results to
+    /// `outfile`. Defaults to `"./timing.csv"`.
+    #[serde(default = "default_timing_outfile")]
+    pub outfile: String,
+
+    /// Whether to record summary statistics or raw values. Defaults to summarize (`true`).
+    #[serde(default = "default_summarize")]
+    pub summarize: bool,
+
+    /// How often to record timing statistics. A larger value means fewer samples will be recorded,
+    /// but will help with performance. Defaults to `1`.
+    #[serde(default = "default_timing_sample")]
+    pub sample_every: u64,
+}
+
+fn default_timing_outfile() -> String {
+    "./timing.csv".to_string()
+}
+
+fn default_summarize() -> bool {
+    true
+}
+
+fn default_timing_sample() -> u64 {
+    1
+}
+
+impl Default for TimingConfig {
+    fn default() -> Self {
+        TimingConfig {
+            outfile: default_timing_outfile(),
+            summarize: default_summarize(),
+            sample_every: default_timing_sample(),
+        }
+    }
 }

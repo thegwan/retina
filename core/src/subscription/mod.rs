@@ -41,6 +41,7 @@ pub mod features_ack_dat;
 // pub use self::tls_handshake::TlsHandshake;
 // pub use self::zc_frame::ZcFrame;
 
+use crate::config::*;
 use crate::conntrack::conn_id::FiveTuple;
 use crate::conntrack::pdu::L4Pdu;
 use crate::conntrack::ConnTracker;
@@ -127,14 +128,27 @@ where
     S: Subscribable,
 {
     /// Creates a new subscription from a filter and a callback.
+    #[cfg(not(feature = "timing"))]
     pub(crate) fn new(factory: FilterFactory, cb: impl Fn(S) + 'a) -> Self {
         Subscription {
             packet_filter: factory.packet_filter,
             conn_filter: factory.conn_filter,
             session_filter: factory.session_filter,
             callback: Box::new(cb),
-            #[cfg(feature = "timing")]
-            timers: Timers::new(),
+        }
+    }
+
+    /// Creates a new subscription with cycle timing counters.
+    #[cfg(feature = "timing")]
+    pub(crate) fn new(
+        factory: FilterFactory, 
+        cb: impl Fn(S) + 'a, 
+        timing: &Option<TimingConfig>) -> Self {Subscription {
+            packet_filter: factory.packet_filter,
+            conn_filter: factory.conn_filter,
+            session_filter: factory.session_filter,
+            callback: Box::new(cb),
+            timers: Timers::new(timing.clone().unwrap_or(TimingConfig::default())),
         }
     }
 

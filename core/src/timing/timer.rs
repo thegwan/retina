@@ -9,38 +9,58 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+use crate::config::TimingConfig;
+
 lazy_static::lazy_static! {
     static ref STATS: Vec<&'static str> =  vec!["name", "cnt", "rec", "avg", "min", "p05", "p25", "p50", "p75", "p95", "p99", "p999", "max"];
 }
 
 #[derive(Debug)]
-pub(crate) struct Timers(IndexMap<String, Mutex<CycleTimer>>);
+pub(crate) struct Timers {
+    timers: IndexMap<String, Mutex<CycleTimer>>,
+    outfile: String,
+    summarize: bool,
+    sample_every: u64,
+}
 
 impl Timers {
-    pub(crate) fn new() -> Self {
-        #[allow(dead_code)]
-        fn init_hist(timers: &mut IndexMap<String, Mutex<CycleTimer>>, name: &str) {
-            let timer = Mutex::new(CycleTimer::new_hist().unwrap());
+    pub(crate) fn new(config: TimingConfig) -> Self {
+
+        let init = |timers: &mut IndexMap<String, Mutex<CycleTimer>>, name: &str| {
+            let timer = if config.summarize {
+                Mutex::new(CycleTimer::new_hist().unwrap())
+            } else {
+                Mutex::new(CycleTimer::new_vec().unwrap())
+            };
             timers.insert(name.to_string(), timer);
-        }
-        #[allow(dead_code)]
-        fn init_vec(timers: &mut IndexMap<String, Mutex<CycleTimer>>, name: &str) {
-            let timer = Mutex::new(CycleTimer::new_vec().unwrap());
-            timers.insert(name.to_string(), timer);
-        }
+        };
+        // fn init_hist(timers: &mut IndexMap<String, Mutex<CycleTimer>>, name: &str) {
+        //     let timer = Mutex::new(CycleTimer::new_hist().unwrap());
+        //     timers.insert(name.to_string(), timer);
+        // }
+        // #[allow(dead_code)]
+        // fn init_vec(timers: &mut IndexMap<String, Mutex<CycleTimer>>, name: &str) {
+        //     let timer = Mutex::new(CycleTimer::new_vec().unwrap());
+        //     timers.insert(name.to_string(), timer);
+        // }
         let mut timers = IndexMap::new();
-        init_hist(&mut timers, "update");
-        init_hist(&mut timers, "extract_features");
-        init_hist(&mut timers, "compute_cycles");
-        Timers(timers)
+        init(&mut timers, "update");
+        init(&mut timers, "extract_features");
+        init(&mut timers, "compute_cycles");
+        Timers {
+            timers,
+            outfile: config.outfile,
+            summarize: config.summarize,
+            sample_every: config.sample_every,
+        }
     }
 
-    pub(crate) fn record(&self, which: &str, value: u64, sample: u64) {
-        if let Some(timer) = self.0.get(which) {
+    pub(crate) fn record(&self, which: &str, value: u64) {
+        if let Some(timer) = self.timers.get(which) {
             timer
                 .lock()
                 .unwrap()
-                .record(value, sample)
+                .record(value, self.sample_every)
                 .unwrap_or_else(|_| panic!("Failed to record {} in {}", value, which));
         } else {
             log::error!("No cycle timer found for: {}", which);
@@ -53,7 +73,7 @@ impl Timers {
         let title = STATS.iter().map(|n| Cell::new(n)).collect::<Vec<_>>();
         table.set_titles(Row::new(title));
 
-        for (name, timer) in self.0.iter() {
+        for (name, timer) in self.timers.iter() {
             let timer = &*timer.lock().unwrap();
             let mut stats = vec![name.to_owned()];
             stats.extend(timer.stats());
@@ -65,16 +85,19 @@ impl Timers {
     }
 
     pub(crate) fn dump_stats(&self) {
-        let hists = HistDumper::from(self);
-        let csv_fname = Path::new("cycle_hist.csv").to_path_buf();
-        hists
-            .dump_csv(csv_fname)
-            .expect("Unable to dump to cycle hist data");
-
-        let vecs = VecDumper::from(self);
-        let json_fname = Path::new("cycle_vec.json").to_path_buf();
-        vecs.dump_json(json_fname)
-            .expect("Unable to dump to cycle vec data");
+        if self.summarize {
+            let hists = HistDumper::from(self);
+            let csv_fname = Path::new(&self.outfile).to_path_buf();
+            hists
+                .dump_csv(csv_fname)
+                .expect("Unable to dump to cycle hist data");
+        } else {
+            let vecs = VecDumper::from(self);
+            let json_fname = Path::new(&self.outfile).to_path_buf();
+            vecs.dump_json(json_fname)
+                .expect("Unable to dump to cycle vec data");
+        }
+        log::info!("Wrote timing data to: {}", &self.outfile);
     }
 }
 
@@ -97,7 +120,7 @@ impl HistDumper {
 impl From<&Timers> for HistDumper {
     fn from(timers: &Timers) -> Self {
         let mut map = IndexMap::new();
-        for (name, timer) in timers.0.iter() {
+        for (name, timer) in timers.timers.iter() {
             let timer = &*timer.lock().unwrap();
             if let CycleTimer::Histogram(_h) = timer {
                 map.insert(name.clone(), timer.stats());
@@ -121,7 +144,7 @@ impl VecDumper {
 impl From<&Timers> for VecDumper {
     fn from(timers: &Timers) -> Self {
         let mut map = HashMap::new();
-        for (name, timer) in timers.0.iter() {
+        for (name, timer) in timers.timers.iter() {
             if let CycleTimer::Vector(v) = &*timer.lock().unwrap() {
                 map.insert(name.clone(), v.data.to_vec());
             }
