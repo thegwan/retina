@@ -2,18 +2,30 @@ import subprocess, re, os
 import toml
 import argparse
 
+# ANSI color codes
+BLACK = '\033[30m'
+RED = '\033[31m'
+GREEN = '\033[32m'
+YELLOW = '\033[33m'
+BLUE = '\033[34m'
+MAGENTA = '\033[35m'
+CYAN = '\033[36m'
+WHITE = '\033[37m'
+RESET = '\033[0m'
+BOLD = '\033[1m'
+
 def modify_binary(template_file, old_text, new_text):
     with open(template_file, 'r', encoding='utf-8') as file:
         filedata = file.read()
     if old_text in filedata:
-        print(f'replacing `{old_text}` with `{new_text}`')
+        print(GREEN + f'> Replacing `{old_text}` with `{new_text}`' + RESET)
         filedata = filedata.replace(old_text, new_text)
         with open('/home/gerryw/retina/examples/extract_features/src/main.rs', 'w', encoding='utf-8') as file:
             file.write(filedata)
         return True
     return False
 
-def compile_binary(release=True):
+def compile_binary(release):
     status = True
     if release:
         cmd = f'cargo build --release --bin extract_features --features timing'
@@ -25,23 +37,28 @@ def compile_binary(release=True):
         if 'Compiling' in stderr_line or 'Finished' in stderr_line:
             print(f'\t> {stderr_line}', end='')
         if 'error' in stderr_line:
-            print(f'\t> {stderr_line}', end='')
+            print(RED + f'\t> {stderr_line}', end='' + RESET)
             status = False
     popen.stdout.close()
     popen.stderr.close()
     popen.wait()
     return status
 
-def run_binary(feature, offline=True):
+def run_binary(directory, feature, release, online):
     status = True
     binary = 'extract_features'
-    executable = f'/home/gerryw/retina/target/release/{binary}'
-    if offline:
-        config_file = '/home/gerryw/retina/scripts/base_offline_config.toml'
+    if release:
+        executable = f'/home/gerryw/retina/target/release/{binary}'
     else:
+        executable = f'/home/gerryw/retina/target/debug/{binary}'
+    if online:
         config_file = '/home/gerryw/retina/scripts/base_online_config.toml'
-    out_file = f'/mnt/netml/results/test/out_features_{feature}.json'
+    else:
+        config_file = '/home/gerryw/retina/scripts/base_offline_config.toml'
+    out_file = f'{directory}/out_features_{feature}.json'
     cmd = f'sudo env LD_LIBRARY_PATH=$LD_LIBRARY_PATH RUST_LOG=error {executable} -c {config_file} -o {out_file}'
+
+    print(GREEN + f'> Running `{cmd}`' + RESET)
 
     EPSILON = 0.0001
 
@@ -53,7 +70,7 @@ def run_binary(feature, offline=True):
             if not num: continue
             value = float(num[0].split('%')[0]) 
             if value > EPSILON :
-                print(f'TERMINATING, current SW drops {value} greater than {EPSILON}...')
+                print(RED + f'> TERMINATING, current SW drops {value} greater than {EPSILON}...' + RESET)
                 stream = os.popen(f'pidof {binary}')
                 pid = stream.read()
                 os.system(f'sudo kill -INT {pid}')
@@ -62,20 +79,18 @@ def run_binary(feature, offline=True):
     popen.wait()
     return status
 
-def profile_memory(feature):
-    out_file = f'/mnt/netml/results/test/mem_features_{feature}.txt'
+def profile_memory(directory, feature):
+    out_file = f'{directory}/mem_features_{feature}.txt'
     # cmd = f'top -d 1 -b | grep --line-buffered extract_feature'
     cmd = f'top -d 1 -b | grep --line-buffered extract_feature > {out_file}'
 
-    print(f'Starting memory profiler, writing to {out_file}')
+    print(GREEN + f'> Starting memory profiler, writing to `{out_file}`' + RESET)
     popen = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, universal_newlines=True)
-    # for stdout_line in iter(popen.stdout.readline, ''):
-    #     print(stdout_line, end='')
     return popen
 
 def main(args):
     ft_names = [
-        'du',
+        'dur',
         'proto',
         # 's_bytes_sum',
         # 'd_bytes_sum',
@@ -94,19 +109,20 @@ def main(args):
         # 'ack_dat',
     ]
 
+    directory = args.directory
+    release_mode = args.release
+    online_mode = args.online
     for feature in ft_names:
-        
-        # print(feature)
-        # old_text = 'use retina_core::subscription::features::Features;'
-        # new_text = f'use retina_core::subscription::features_{feature}::Features;'
-        # if not modify_binary('/home/gerryw/retina/scripts/base_extract_features.rs', old_text, new_text):
-        #     print(f'Failed to modify template for `{feature}`, skipping...')
-        # if not compile_binary(release=True):
-        #     print(f'Failed to compile for `{feature}`, skipping...')
-        #     continue
-        mem_profiler = profile_memory(feature)
-        print("here")
-        if not run_binary(feature, offline=False):
+        print(CYAN + BOLD + feature + RESET)
+        old_text = 'use retina_core::subscription::features::Features;'
+        new_text = f'use retina_core::subscription::features_{feature}::Features;'
+        if not modify_binary('/home/gerryw/retina/scripts/base_extract_features.rs', old_text, new_text):
+            print(f'Failed to modify template for `{feature}`, skipping...')
+        if not compile_binary(release=release_mode):
+            print(f'Failed to compile for `{feature}`, skipping...')
+            continue
+        mem_profiler = profile_memory(directory, feature)
+        if not run_binary(directory, feature, release=release_mode, online=online_mode):
             print(f'Failed to run {feature}, skipping...')
             continue
         mem_profiler.terminate()
@@ -115,43 +131,12 @@ def main(args):
             
             
 
-    # binary = args.binary
-
-    # duration = int(args.duration)
-    # start = int(args.start)
-    
-    # config_file = args.config
-    # outfile = args.outfile
-
-    # executable = f'/home/gerryw/retina/target/release/{binary}'
-    # cmd = f'sudo env LD_LIBRARY_PATH=$LD_LIBRARY_PATH RUST_LOG=error {executable} -c {config_file} -o {outfile}'
-
-    # config=toml.load(config_file)
-    # n_cores = len(config['online']['ports'][0]['cores'])
-    # print(config)
-    # for b in range(start, 0, -n_cores):
-    #     print(f'Running {binary} with {b} buckets')
-        
-    #     config['online']['monitor']['log'] = None
-    #     config['online']['duration'] = duration
-    #     config['online']['ports'][0]['sink']["nb_buckets"] = b
-
-    #     f = open(config_file, 'w')
-    #     toml.dump(config, f)
-    #     f.close()
-
-    #     stop_code = execute(cmd, executable)
-    #     if stop_code > 0:
-    #         print(f'Stop code {stop_code}: done')
-    #         break
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-b', '--binary')
-    parser.add_argument('-d', '--duration')
-    parser.add_argument('-s', '--start')
-    parser.add_argument('-c', '--config')
-    parser.add_argument('-o', '--outfile')
+    parser.add_argument('-d', '--directory')
+    parser.add_argument('--release', action='store_true', default=False)
+    parser.add_argument('--online', action='store_true', default=False)
     return parser.parse_args()
 
 if __name__ == '__main__':
