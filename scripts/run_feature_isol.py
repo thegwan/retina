@@ -90,6 +90,7 @@ def profile_memory(directory, feature):
 
 def main(args):
     ft_names = [
+        'all',
         'dur',
         'proto',
         # 's_bytes_sum',

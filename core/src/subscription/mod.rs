@@ -8,7 +8,7 @@
 // pub mod connection;
 // pub mod connection_frame;
 // pub mod dns_transaction;
-pub mod features;
+pub mod features_all;
 pub mod features_dur;
 pub mod features_proto;
 pub mod features_s_bytes_sum;
