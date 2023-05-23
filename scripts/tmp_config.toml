@@ -24,4 +24,4 @@ nb_memory_channels = 6
     tcp_establish_timeout = 5000
 
 [timing]
-    outfile = "./cycles_features.csv"
+    outfile = "/mnt/netml/results/test/cycles_features_dur.csv"

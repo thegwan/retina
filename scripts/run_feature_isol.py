@@ -15,13 +15,28 @@ WHITE = '\033[37m'
 RESET = '\033[0m'
 BOLD = '\033[1m'
 
-def modify_binary(template_file, old_text, new_text):
+def modify_binary(template_file, feature):
+    old_text = 'use retina_core::subscription::features::Features;'
+    new_text = f'use retina_core::subscription::features_{feature}::Features;'
     with open(template_file, 'r', encoding='utf-8') as file:
         filedata = file.read()
     if old_text in filedata:
         print(GREEN + f'> Replacing `{old_text}` with `{new_text}`' + RESET)
         filedata = filedata.replace(old_text, new_text)
         with open('/home/gerryw/retina/examples/extract_features/src/main.rs', 'w', encoding='utf-8') as file:
+            file.write(filedata)
+        return True
+    return False
+
+def modify_config(template_file, directory, feature):
+    old_text = 'outfile = "./cycles_features.csv"'
+    new_text = f'outfile = "{directory}/cycles_features_{feature}.csv"'
+    with open(template_file, 'r', encoding='utf-8') as file:
+        filedata = file.read()
+    if old_text in filedata:
+        print(GREEN + f'> Replacing `{old_text}` with `{new_text}`' + RESET)
+        filedata = filedata.replace(old_text, new_text)
+        with open('/home/gerryw/retina/scripts/tmp_config.toml', 'w', encoding='utf-8') as file:
             file.write(filedata)
         return True
     return False
@@ -52,10 +67,8 @@ def run_binary(directory, feature, release, online):
         executable = f'/home/gerryw/retina/target/release/{binary}'
     else:
         executable = f'/home/gerryw/retina/target/debug/{binary}'
-    if online:
-        config_file = '/home/gerryw/retina/scripts/base_online_config.toml'
-    else:
-        config_file = '/home/gerryw/retina/scripts/base_offline_config.toml'
+    
+    config_file = '/home/gerryw/retina/scripts/tmp_config.toml'
     out_file = f'{directory}/out_features_{feature}.json'
     cmd = f'sudo env LD_LIBRARY_PATH=$LD_LIBRARY_PATH RUST_LOG=error {executable} -c {config_file} -o {out_file}'
 
@@ -93,22 +106,22 @@ def main(args):
     ft_names = [
         'all',
         'dur',
-        'proto',
-        's_bytes_sum',
-        'd_bytes_sum',
-        's_ttl_mean',
-        'd_ttl_mean',
-        's_load',
-        'd_load',
-        's_bytes_mean',
-        'd_bytes_mean',
-        's_pkt_cnt',
-        'd_pkt_cnt',
-        's_iat_mean',
-        'd_iat_mean',
-        'tcp_rtt',
-        'syn_ack',
-        'ack_dat',
+        # 'proto',
+        # 's_bytes_sum',
+        # 'd_bytes_sum',
+        # 's_ttl_mean',
+        # 'd_ttl_mean',
+        # 's_load',
+        # 'd_load',
+        # 's_bytes_mean',
+        # 'd_bytes_mean',
+        # 's_pkt_cnt',
+        # 'd_pkt_cnt',
+        # 's_iat_mean',
+        # 'd_iat_mean',
+        # 'tcp_rtt',
+        # 'syn_ack',
+        # 'ack_dat',
     ]
 
     directory = args.directory
@@ -118,15 +131,25 @@ def main(args):
     errors = {}
     for feature in ft_names:
         print(CYAN + BOLD + feature + RESET)
-        old_text = 'use retina_core::subscription::features::Features;'
-        new_text = f'use retina_core::subscription::features_{feature}::Features;'
-        if not modify_binary('/home/gerryw/retina/scripts/base_extract_features.rs', old_text, new_text):
-            print(f'Failed to modify template for `{feature}`, skipping...')
-            errors[feature] = 'modify'
+        
+        if not modify_binary('/home/gerryw/retina/scripts/base_extract_features.rs', feature):
+            print(f'Failed to modify binary template for `{feature}`, skipping...')
+            errors[feature] = 'modify_binary'
+        
+        if args.online:
+            config_file = '/home/gerryw/retina/scripts/base_online_config.toml'
+        else:
+            config_file = '/home/gerryw/retina/scripts/base_offline_config.toml'
+        
+        if not modify_config(config_file, args.directory, feature):
+            print(f'Failed to modify config template for `{feature}`, skipping...')
+            errors[feature] = 'modify_config'
+        
         if not compile_binary(release=release_mode):
             print(f'Failed to compile for `{feature}`, skipping...')
             errors[feature] = 'compile'
             continue
+       
         mem_profiler = profile_memory(directory, feature)
         if not run_binary(directory, feature, release=release_mode, online=online_mode):
             print(f'Failed to run {feature}, skipping...')
