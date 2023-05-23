@@ -2,11 +2,49 @@ import subprocess, re, os
 import toml
 import argparse
 
+def modify_binary(template_file, old_text, new_text):
+    with open(template_file, 'r', encoding='utf-8') as file:
+        filedata = file.read()
+    if old_text in filedata:
+        print(f'replacing `{old_text}` with `{new_text}`')
+        filedata = filedata.replace(old_text, new_text)
+        with open('/home/gerryw/retina/examples/extract_features/src/main.rs', 'w', encoding='utf-8') as file:
+            file.write(filedata)
+        return True
+    return False
 
-# allowed % packet drop
-EPSILON=0.001
-def execute(cmd, executable):
-    stop = 0
+def compile_binary(release=True):
+    status = True
+    if release:
+        cmd = f'cargo build --release --bin extract_features --features timing'
+    else:
+        cmd = f'cargo build --bin extract_features --features timing'
+    popen = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    for stderr_line in iter(popen.stderr.readline, ''):
+        # print(stderr_line, end='')
+        if 'Compiling' in stderr_line or 'Finished' in stderr_line:
+            print(f'\t> {stderr_line}', end='')
+        if 'error' in stderr_line:
+            print(f'\t> {stderr_line}', end='')
+            status = False
+    popen.stdout.close()
+    popen.stderr.close()
+    popen.wait()
+    return status
+
+def run_binary(feature, offline=True):
+    status = True
+    binary = 'extract_features'
+    executable = f'/home/gerryw/retina/target/release/{binary}'
+    if offline:
+        config_file = '/home/gerryw/retina/scripts/base_offline_config.toml'
+    else:
+        config_file = '/home/gerryw/retina/scripts/base_online_config.toml'
+    out_file = f'/mnt/netml/results/test/out_features_{feature}.json'
+    cmd = f'sudo env LD_LIBRARY_PATH=$LD_LIBRARY_PATH RUST_LOG=error {executable} -c {config_file} -o {out_file}'
+
+    EPSILON = 0.0001
+
     popen = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, universal_newlines=True)
     for stdout_line in iter(popen.stdout.readline, ''):
         print(stdout_line, end='')
@@ -16,71 +54,66 @@ def execute(cmd, executable):
             value = float(num[0].split('%')[0]) 
             if value > EPSILON :
                 print(f'TERMINATING, current SW drops {value} greater than {EPSILON}...')
-                stream = os.popen(f'pidof {executable}')
+                stream = os.popen(f'pidof {binary}')
                 pid = stream.read()
                 os.system(f'sudo kill -INT {pid}')
-                stop = 0      # continue decreasing buckets
-        elif 'DROPPED' in stdout_line:
-            num = re.findall('\d*\.*\d+\%', stdout_line)
-            if not num: continue
-            value = float(num[0].split('%')[0]) 
-            if value == 0:
-                # 0 drops
-                print('Zero drops...')
-                stop = 1
-            elif value <= EPSILON :
-                print(f'Epsilon {value}% dropped...')
-                stop = 2
-
+                status = False     # Failed, skip
     popen.stdout.close()
     popen.wait()
-    return stop
+    return status
 
-def modify_binary(old_text, new_text):
-    with open('base_extract_features.rs', 'r', encoding='utf-8') as file:
-        filedata = file.read()
-    if old_text in filedata:
-        print(f'replacing {old_text} with {new_text}')
-    filedata = filedata.replace(old_text, new_text)
-    with open('/home/gerryw/retina/examples/extract_features/src/main.rs', 'w', encoding='utf-8') as file:
-        file.write(filedata)
+def profile_memory(feature):
+    out_file = f'/mnt/netml/results/test/mem_features_{feature}.txt'
+    # cmd = f'top -d 1 -b | grep --line-buffered extract_feature'
+    cmd = f'top -d 1 -b | grep --line-buffered extract_feature > {out_file}'
 
-def compile_binary():
-    cmd = f'cargo build --release --bin extract_features --features timing'
+    print(f'Starting memory profiler, writing to {out_file}')
     popen = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, universal_newlines=True)
-    for stdout_line in iter(popen.stdout.readline, ''):
-        if 'Compiling' in stdout_line or 'Finished' in stdout_line:
-            print(stdout_line, end='')
-    popen.stdout.close()
-    popen.wait()
+    # for stdout_line in iter(popen.stdout.readline, ''):
+    #     print(stdout_line, end='')
+    return popen
 
 def main(args):
     ft_names = [
-        'dur',
+        'du',
         'proto',
-        's_bytes_sum',
-        'd_bytes_sum',
-        's_ttl_mean',
-        'd_ttl_mean',
-        's_load',
-        'd_load',
-        's_bytes_mean',
-        'd_bytes_mean',
-        's_pkt_cnt',
-        'd_pkt_cnt',
-        's_iat_mean',
-        'd_iat_mean',
-        'tcp_rtt',
-        'syn_ack',
-        'ack_dat',
+        # 's_bytes_sum',
+        # 'd_bytes_sum',
+        # 's_ttl_mean',
+        # 'd_ttl_mean',
+        # 's_load',
+        # 'd_load',
+        # 's_bytes_mean',
+        # 'd_bytes_mean',
+        # 's_pkt_cnt',
+        # 'd_pkt_cnt',
+        # 's_iat_mean',
+        # 'd_iat_mean',
+        # 'tcp_rtt',
+        # 'syn_ack',
+        # 'ack_dat',
     ]
 
     for feature in ft_names:
-        print(feature)
-        old_text = 'use retina_core::subscription::features::Features;'
-        new_text = f'use retina_core::subscription::features_{feature}::Features;'
-        modify_binary(old_text, new_text)
-        compile_binary()
+        
+        # print(feature)
+        # old_text = 'use retina_core::subscription::features::Features;'
+        # new_text = f'use retina_core::subscription::features_{feature}::Features;'
+        # if not modify_binary('/home/gerryw/retina/scripts/base_extract_features.rs', old_text, new_text):
+        #     print(f'Failed to modify template for `{feature}`, skipping...')
+        # if not compile_binary(release=True):
+        #     print(f'Failed to compile for `{feature}`, skipping...')
+        #     continue
+        mem_profiler = profile_memory(feature)
+        print("here")
+        if not run_binary(feature, offline=False):
+            print(f'Failed to run {feature}, skipping...')
+            continue
+        mem_profiler.terminate()
+        # terminate won't kill the child top process since it is running with shell=True
+        os.system(f'pkill -f top')
+            
+            
 
     # binary = args.binary
 
