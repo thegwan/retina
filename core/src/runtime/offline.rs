@@ -71,7 +71,9 @@ where
             if frame.header.len as usize > self.options.offline.mtu {
                 continue;
             }
-            let mbuf = Mbuf::from_bytes(frame.data, mempool_raw)
+            let timeval = frame.header.ts;
+            let unix_ts_us = timeval.tv_sec * 1_000_000 + timeval.tv_usec;
+            let mbuf = Mbuf::from_bytes(frame.data, unix_ts_us, mempool_raw)
                 .expect("Unable to allocate mbuf. Try increasing mempool size.");
             nb_pkts += 1;
             nb_bytes += mbuf.data_len() as u64;

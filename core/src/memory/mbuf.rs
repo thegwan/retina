@@ -25,7 +25,10 @@ use thiserror::Error;
 ///
 /// This is a wrapper around a DPDK message buffer that represents a single Ethernet frame.
 pub struct Mbuf {
+    /// Raw DPDK Mbuf
     raw: NonNull<dpdk::rte_mbuf>,
+    /// UNIX timestamp in microseconds
+    ts: i64,
 }
 
 impl Mbuf {
@@ -34,6 +37,7 @@ impl Mbuf {
         unsafe {
             Mbuf {
                 raw: NonNull::new_unchecked(mbuf),
+                ts: 0,
             }
         }
     }
@@ -42,11 +46,12 @@ impl Mbuf {
     pub(crate) fn new(mbuf: *mut dpdk::rte_mbuf) -> Result<Mbuf> {
         Ok(Mbuf {
             raw: NonNull::new(mbuf).ok_or(MempoolError::Exhausted)?,
+            ts: 0,
         })
     }
 
-    /// Creates a new Mbuf from a byte slice.
-    pub(crate) fn from_bytes(data: &[u8], mp: *mut dpdk::rte_mempool) -> Result<Mbuf> {
+    /// Creates a new Mbuf from a byte slice `data` and UNIX timestamp `ts`.
+    pub(crate) fn from_bytes(data: &[u8], ts: i64, mp: *mut dpdk::rte_mempool) -> Result<Mbuf> {
         let mut mbuf = unsafe { Mbuf::new(dpdk::rte_pktmbuf_alloc(mp))? };
         if data.len() <= mbuf.raw().buf_len.into() {
             mbuf.raw_mut().data_len += data.len() as u16;
@@ -59,6 +64,7 @@ impl Mbuf {
         } else {
             bail!(MbufError::WritePastBuffer);
         }
+        mbuf.ts = ts;
         Ok(mbuf)
     }
 
@@ -72,10 +78,9 @@ impl Mbuf {
         unsafe { self.raw.as_mut() }
     }
 
-    /// Returns the UNIX timestamp of the packet.
-    #[allow(dead_code)]
-    pub(crate) fn timestamp(&self) -> usize {
-        unimplemented!();
+    /// Returns the UNIX timestamp (microseconds) of the packet.
+    pub(crate) fn timestamp(&self) -> i64 {
+        self.ts
     }
 
     /// Returns the length of the data in the Mbuf.

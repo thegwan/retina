@@ -67,9 +67,9 @@ fn main() -> Result<()> {
 /// Loads a trained classifier from `file`.
 fn load_clf(
     fname: &PathBuf,
-) -> Result<DecisionTreeClassifier<f32, usize, DenseMatrix<f32>, Vec<usize>>> {
+) -> Result<DecisionTreeClassifier<f64, usize, DenseMatrix<f64>, Vec<usize>>> {
     let mut file = File::open(fname)?;
-    let clf: DecisionTreeClassifier<f32, usize, DenseMatrix<f32>, Vec<usize>> =
+    let clf: DecisionTreeClassifier<f64, usize, DenseMatrix<f64>, Vec<usize>> =
         bincode::deserialize_from(&mut file)?;
     Ok(clf)
 }

@@ -46,7 +46,7 @@ impl Timers {
         let mut timers = IndexMap::new();
         init(&mut timers, "update");
         init(&mut timers, "extract_features");
-        init(&mut timers, "compute_cycles");
+        init(&mut timers, "compute_ns");
         Timers {
             timers,
             outfile: config.outfile,
