@@ -580,7 +580,7 @@ fn default_log_port_stats() -> Vec<String> {
 /// ```
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct OfflineConfig {
-    /// Path to packet capture (pcap) file.
+    /// Path to packet capture (pcap) file, or directory containing pcaps.
     pub pcap: String,
 
     /// Maximum frame size, equivalent to MTU on a live interface. Defaults to `1500`.
