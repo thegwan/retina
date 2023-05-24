@@ -16,62 +16,14 @@ def replace_in_file(file_path, old_text, new_text):
     with open(file_path, 'w', encoding='utf-8') as file:
         file.write(filedata)
 
-# old_block = """pub struct TrackedFeatures {
-# """
-# new_block = """pub struct TrackedFeatures {
-#     #[cfg(feature = "timing")]
-#     compute_cycles: u64,
-# """
-
-# old_block = """fn update(&mut self, segment: L4Pdu) -> Result<()> {
-# """
-# new_block = """fn update(&mut self, segment: L4Pdu) -> Result<()> {
-#         #[cfg(feature = "timing")]
-#         let start_tsc = unsafe { rte_rdtsc() };
-# """
-
-# old_block = """self.proto = ipv4.protocol() as i32;
-#         Ok(())
-# """
-# new_block = """self.proto = ipv4.protocol() as i32;
-#         #[cfg(feature = "timing")]
-#         {
-#             self.compute_cycles += unsafe { rte_rdtsc() } - start_tsc;
-#         }
-#         Ok(())
-# """
-
-# old_block = """fn extract_features(&self) -> Vec<f32> {
-# """
-# new_block = """fn extract_features(&mut self) -> Vec<f32> {
-#         #[cfg(feature = "timing")]
-#         let start_tsc = unsafe { rte_rdtsc() };
-# """
-
-# old_block = """features
-#     }
-# """
-# new_block = """#[cfg(feature = "timing")]
-#         {
-#         self.compute_cycles += unsafe { rte_rdtsc() } - start_tsc;
-#         }
-#         features
-#     }
-# """
-
-# old_block = """TrackedFeatures {
-#             // sni: String::new(),
-# """
-# new_block = """TrackedFeatures {
-#             #[cfg(feature = "timing")]
-#             compute_cycles: 0,
-#             // sni: String::new(),
-# """
-
-old_block = """subscription.invoke(conn);
+old_block = """let conn = Features {
+            // sni: self.sni.clone(),
+            features,
+        };
 """
-new_block = """tsc_record!(subscription.timers, "compute_cycles", self.compute_cycles);
-        subscription.invoke(conn);
+new_block = """let conn = Features {
+            features,
+        };
 """
 
 if len(sys.argv) != 2:

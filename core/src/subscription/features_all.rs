@@ -242,7 +242,6 @@ impl Trackable for TrackedFeatures {
         timer_elapsed_nanos!(subscription.timers, "extract_features", t);
         
         let conn = Features {
-            // sni: self.sni.clone(),
             features,
         };
         timer_record!(subscription.timers, "compute_ns", self.compute_ns);
