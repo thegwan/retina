@@ -108,10 +108,10 @@ impl TrackedFeatures {
     fn update(&mut self, segment: L4Pdu) -> Result<()> {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-        
+
         // let curr_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as i64;
         let curr_ts = segment.mbuf_ref().timestamp().saturating_mul(1000i64);
-        
+
         let mbuf = segment.mbuf_ref();
         let eth = mbuf.parse_to::<Ethernet>()?;
         let ipv4 = eth.parse_to::<Ipv4>()?;
@@ -157,16 +157,21 @@ impl TrackedFeatures {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
 
-        let dur =
-            (self.s_last_ts.max(self.d_last_ts)).saturating_sub(self.syn_ts) as f64;
+        let dur = (self.s_last_ts.max(self.d_last_ts)).saturating_sub(self.syn_ts) as f64;
         let s_ttl_mean = safe_divide(self.s_ttl_sum as f64, self.s_pkt_cnt as f64);
         let d_ttl_mean = safe_divide(self.d_ttl_sum as f64, self.d_pkt_cnt as f64);
         let s_load = safe_divide(self.s_bytes_sum as f64 * 8e9, dur);
         let d_load = safe_divide(self.d_bytes_sum as f64 * 8e9, dur);
-        let s_bytes_mean =  safe_divide(self.s_bytes_sum as f64, self.s_pkt_cnt as f64);
-        let d_bytes_mean =  safe_divide(self.d_bytes_sum as f64, self.d_pkt_cnt as f64);
-        let s_iat_mean = safe_divide(self.s_last_ts.saturating_sub(self.syn_ts) as f64, self.s_pkt_cnt as f64);
-        let d_iat_mean = safe_divide(self.d_last_ts.saturating_sub(self.syn_ack_ts) as f64, self.d_pkt_cnt as f64);
+        let s_bytes_mean = safe_divide(self.s_bytes_sum as f64, self.s_pkt_cnt as f64);
+        let d_bytes_mean = safe_divide(self.d_bytes_sum as f64, self.d_pkt_cnt as f64);
+        let s_iat_mean = safe_divide(
+            self.s_last_ts.saturating_sub(self.syn_ts) as f64,
+            self.s_pkt_cnt as f64,
+        );
+        let d_iat_mean = safe_divide(
+            self.d_last_ts.saturating_sub(self.syn_ack_ts) as f64,
+            self.d_pkt_cnt as f64,
+        );
         let syn_ack = self.syn_ack_ts.saturating_sub(self.syn_ts) as f64;
         let ack_dat = self.ack_ts.saturating_sub(self.syn_ack_ts) as f64;
         let tcp_rtt = syn_ack + ack_dat;
@@ -220,15 +225,18 @@ impl Trackable for TrackedFeatures {
         }
     }
 
-    fn pre_match(&mut self, pdu: L4Pdu, _session_id: Option<usize>, subscription: &Subscription<Self::Subscribed>) {
+    fn pre_match(
+        &mut self,
+        pdu: L4Pdu,
+        _session_id: Option<usize>,
+        subscription: &Subscription<Self::Subscribed>,
+    ) {
         timer_start!(t);
         self.update(pdu).unwrap_or(());
         timer_elapsed_nanos!(subscription.timers, "update", t);
     }
 
-    fn on_match(&mut self, _session: Session, _subscription: &Subscription<Self::Subscribed>) {
-
-    }
+    fn on_match(&mut self, _session: Session, _subscription: &Subscription<Self::Subscribed>) {}
 
     fn post_match(&mut self, pdu: L4Pdu, subscription: &Subscription<Self::Subscribed>) {
         timer_start!(t);
@@ -240,10 +248,8 @@ impl Trackable for TrackedFeatures {
         timer_start!(t);
         let features = self.extract_features();
         timer_elapsed_nanos!(subscription.timers, "extract_features", t);
-        
-        let conn = Features {
-            features,
-        };
+
+        let conn = Features { features };
         timer_record!(subscription.timers, "compute_ns", self.compute_ns);
         subscription.invoke(conn);
     }

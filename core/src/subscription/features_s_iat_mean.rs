@@ -1,4 +1,3 @@
-
 //! Features.
 
 use crate::conntrack::conn_id::FiveTuple;
@@ -86,9 +85,9 @@ impl Subscribable for Features {
 pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
-      syn_ts: i64,
-      s_last_ts: i64,
-      s_pkt_cnt: i64,
+    syn_ts: i64,
+    s_last_ts: i64,
+    s_pkt_cnt: i64,
 }
 
 impl TrackedFeatures {
@@ -96,10 +95,9 @@ impl TrackedFeatures {
     fn update(&mut self, segment: L4Pdu) -> Result<()> {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-        
+
         // let curr_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as i64;
         let curr_ts = segment.mbuf_ref().timestamp().saturating_mul(1000i64);
-
 
         if segment.dir {
             self.s_last_ts = curr_ts;
@@ -118,11 +116,12 @@ impl TrackedFeatures {
     fn extract_features(&mut self) -> Vec<f64> {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-        let s_iat_mean = safe_divide(self.s_last_ts.saturating_sub(self.syn_ts) as f64, self.s_pkt_cnt as f64);
+        let s_iat_mean = safe_divide(
+            self.s_last_ts.saturating_sub(self.syn_ts) as f64,
+            self.s_pkt_cnt as f64,
+        );
 
-        let features = vec![
-            s_iat_mean,
-        ];
+        let features = vec![s_iat_mean];
         #[cfg(feature = "timing")]
         {
             let end_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
@@ -146,14 +145,18 @@ impl Trackable for TrackedFeatures {
         }
     }
 
-    fn pre_match(&mut self, pdu: L4Pdu, _session_id: Option<usize>, subscription: &Subscription<Self::Subscribed>) {
+    fn pre_match(
+        &mut self,
+        pdu: L4Pdu,
+        _session_id: Option<usize>,
+        subscription: &Subscription<Self::Subscribed>,
+    ) {
         timer_start!(t);
         self.update(pdu).unwrap_or(());
         timer_elapsed_nanos!(subscription.timers, "update", t);
     }
 
-    fn on_match(&mut self, _session: Session, _subscription: &Subscription<Self::Subscribed>) {
-            }
+    fn on_match(&mut self, _session: Session, _subscription: &Subscription<Self::Subscribed>) {}
 
     fn post_match(&mut self, pdu: L4Pdu, subscription: &Subscription<Self::Subscribed>) {
         timer_start!(t);
@@ -165,9 +168,7 @@ impl Trackable for TrackedFeatures {
         timer_start!(t);
         let features = self.extract_features();
         timer_elapsed_nanos!(subscription.timers, "extract_features", t);
-        let conn = Features {
-            features,
-        };
+        let conn = Features { features };
         timer_record!(subscription.timers, "compute_ns", self.compute_ns);
         subscription.invoke(conn);
     }

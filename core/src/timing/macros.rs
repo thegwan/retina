@@ -21,7 +21,9 @@ macro_rules! timer_elapsed_cycles {
 macro_rules! timer_elapsed_nanos {
     ( $timers:expr, $timer:expr, $start:ident ) => {
         #[cfg(feature = "timing")]
-        $timers.record($timer, unsafe { ($crate::dpdk::rte_rdtsc() - $start) as f64 / (rte_get_tsc_hz() as f64 / 1e9) } as u64);
+        $timers.record($timer, unsafe {
+            ($crate::dpdk::rte_rdtsc() - $start) as f64 / (rte_get_tsc_hz() as f64 / 1e9)
+        } as u64);
     };
 }
 
@@ -33,5 +35,3 @@ macro_rules! timer_record {
         $timers.record($timer, $time);
     };
 }
-
-

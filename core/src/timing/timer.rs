@@ -25,7 +25,6 @@ pub(crate) struct Timers {
 
 impl Timers {
     pub(crate) fn new(config: TimingConfig) -> Self {
-
         let init = |timers: &mut IndexMap<String, Mutex<CycleTimer>>, name: &str| {
             let timer = if config.summarize {
                 Mutex::new(CycleTimer::new_hist().unwrap())

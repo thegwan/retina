@@ -8,24 +8,24 @@
 // pub mod connection;
 // pub mod connection_frame;
 // pub mod dns_transaction;
+pub mod features_ack_dat;
 pub mod features_all;
+pub mod features_d_bytes_mean;
+pub mod features_d_bytes_sum;
+pub mod features_d_iat_mean;
+pub mod features_d_load;
+pub mod features_d_pkt_cnt;
+pub mod features_d_ttl_mean;
 pub mod features_dur;
 pub mod features_proto;
-pub mod features_s_bytes_sum;
-pub mod features_d_bytes_sum;
-pub mod features_s_ttl_mean;
-pub mod features_d_ttl_mean;
-pub mod features_s_load;
-pub mod features_d_load;
 pub mod features_s_bytes_mean;
-pub mod features_d_bytes_mean;
-pub mod features_s_pkt_cnt;
-pub mod features_d_pkt_cnt;
+pub mod features_s_bytes_sum;
 pub mod features_s_iat_mean;
-pub mod features_d_iat_mean;
-pub mod features_tcp_rtt;
+pub mod features_s_load;
+pub mod features_s_pkt_cnt;
+pub mod features_s_ttl_mean;
 pub mod features_syn_ack;
-pub mod features_ack_dat;
+pub mod features_tcp_rtt;
 // pub mod frame;
 // pub mod http_transaction;
 // pub mod tls_handshake;
@@ -50,10 +50,9 @@ use crate::memory::mbuf::Mbuf;
 use crate::protocols::stream::{ConnData, ConnParser, Session};
 
 #[cfg(feature = "timing")]
-use crate::timing::timer::Timers;
-#[cfg(feature = "timing")]
 use crate::config::TimingConfig;
-
+#[cfg(feature = "timing")]
+use crate::timing::timer::Timers;
 
 /// The abstraction level of the subscribable type.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -96,7 +95,12 @@ pub trait Trackable {
     fn new(five_tuple: FiveTuple) -> Self;
 
     /// Update tracked subscription data prior to a full filter match.
-    fn pre_match(&mut self, pdu: L4Pdu, session_id: Option<usize>, subscription: &Subscription<Self::Subscribed>);
+    fn pre_match(
+        &mut self,
+        pdu: L4Pdu,
+        session_id: Option<usize>,
+        subscription: &Subscription<Self::Subscribed>,
+    );
 
     /// Update tracked subscription data on a full filter match.
     fn on_match(&mut self, session: Session, subscription: &Subscription<Self::Subscribed>);
@@ -143,9 +147,11 @@ where
     /// Creates a new subscription with cycle timing counters.
     #[cfg(feature = "timing")]
     pub(crate) fn new(
-        factory: FilterFactory, 
-        cb: impl Fn(S) + 'a, 
-        timing: &Option<TimingConfig>) -> Self {Subscription {
+        factory: FilterFactory,
+        cb: impl Fn(S) + 'a,
+        timing: &Option<TimingConfig>,
+    ) -> Self {
+        Subscription {
             packet_filter: factory.packet_filter,
             conn_filter: factory.conn_filter,
             session_filter: factory.session_filter,

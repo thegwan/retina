@@ -88,8 +88,8 @@ impl Subscribable for Features {
 pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
-      d_pkt_cnt: i64,
-      d_bytes_sum: i64,
+    d_pkt_cnt: i64,
+    d_bytes_sum: i64,
 }
 
 impl TrackedFeatures {
@@ -97,13 +97,12 @@ impl TrackedFeatures {
     fn update(&mut self, segment: L4Pdu) -> Result<()> {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-   
+
         let mbuf = segment.mbuf_ref();
         let eth = mbuf.parse_to::<Ethernet>()?;
         let ipv4 = eth.parse_to::<Ipv4>()?;
 
         if segment.dir {
-            
         } else {
             self.d_pkt_cnt += 1;
             self.d_bytes_sum += ipv4.total_length() as i64;
@@ -121,13 +120,9 @@ impl TrackedFeatures {
     fn extract_features(&mut self) -> Vec<f64> {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-        let d_bytes_mean =  safe_divide(self.d_bytes_sum as f64, self.d_pkt_cnt as f64);
+        let d_bytes_mean = safe_divide(self.d_bytes_sum as f64, self.d_pkt_cnt as f64);
 
-        let features = vec![
-        
-            d_bytes_mean,
-
-        ];
+        let features = vec![d_bytes_mean];
         #[cfg(feature = "timing")]
         {
             let end_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
@@ -141,7 +136,6 @@ impl Trackable for TrackedFeatures {
     type Subscribed = Features;
 
     fn new(_five_tuple: FiveTuple) -> Self {
-
         TrackedFeatures {
             #[cfg(feature = "timing")]
             compute_ns: 0,
@@ -150,14 +144,18 @@ impl Trackable for TrackedFeatures {
         }
     }
 
-    fn pre_match(&mut self, pdu: L4Pdu, _session_id: Option<usize>, subscription: &Subscription<Self::Subscribed>) {
+    fn pre_match(
+        &mut self,
+        pdu: L4Pdu,
+        _session_id: Option<usize>,
+        subscription: &Subscription<Self::Subscribed>,
+    ) {
         timer_start!(t);
         self.update(pdu).unwrap_or(());
         timer_elapsed_nanos!(subscription.timers, "update", t);
     }
 
-    fn on_match(&mut self, _session: Session, _subscription: &Subscription<Self::Subscribed>) {
-            }
+    fn on_match(&mut self, _session: Session, _subscription: &Subscription<Self::Subscribed>) {}
 
     fn post_match(&mut self, pdu: L4Pdu, subscription: &Subscription<Self::Subscribed>) {
         timer_start!(t);
@@ -169,9 +167,7 @@ impl Trackable for TrackedFeatures {
         timer_start!(t);
         let features = self.extract_features();
         timer_elapsed_nanos!(subscription.timers, "extract_features", t);
-        let conn = Features {
-            features,
-        };
+        let conn = Features { features };
         timer_record!(subscription.timers, "compute_ns", self.compute_ns);
         subscription.invoke(conn);
     }
