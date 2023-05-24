@@ -41,7 +41,6 @@ pub mod features_all;
 // pub use self::tls_handshake::TlsHandshake;
 // pub use self::zc_frame::ZcFrame;
 
-use crate::config::*;
 use crate::conntrack::conn_id::FiveTuple;
 use crate::conntrack::pdu::L4Pdu;
 use crate::conntrack::ConnTracker;
@@ -52,6 +51,9 @@ use crate::protocols::stream::{ConnData, ConnParser, Session};
 
 #[cfg(feature = "timing")]
 use crate::timing::timer::Timers;
+#[cfg(feature = "timing")]
+use crate::config::TimingConfig;
+
 
 /// The abstraction level of the subscribable type.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]

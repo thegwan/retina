@@ -28,8 +28,6 @@ lazy_static! {
 /// A features record.
 #[derive(Debug)]
 pub struct Features {
-    // /// Server name (for TLS connections)
-    // pub sni: String,
     /// Features,
     pub features: Vec<f64>,
 }
@@ -42,7 +40,6 @@ impl Serialize for Features {
         S: Serializer,
     {
         let mut state = serializer.serialize_struct("Features", 1)?;
-        // state.serialize_field("sni", &self.sni)?;
         state.serialize_field("fts", &self.features)?;
         state.end()
     }
@@ -92,7 +89,6 @@ impl Subscribable for Features {
 pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
-    // sni: String,
     syn_ts: i64,
     syn_ack_ts: i64,
     ack_ts: i64,
@@ -163,48 +159,14 @@ impl TrackedFeatures {
 
         let dur =
             (self.s_last_ts.max(self.d_last_ts)).saturating_sub(self.syn_ts) as f64;
-        let s_ttl_mean = if self.s_pkt_cnt > 0 {
-            self.s_ttl_sum as f64 / self.s_pkt_cnt as f64
-        } else {
-            -1.0
-        };
-        let d_ttl_mean = if self.d_pkt_cnt > 0 {
-            self.d_ttl_sum as f64 / self.d_pkt_cnt as f64
-        } else {
-            -1.0
-        };
-        let s_load = if dur > 0.0 {
-            self.s_bytes_sum as f64 * 8.0 / dur
-        } else {
-            -1.0
-        };
-        let d_load = if dur > 0.0 {
-            self.d_bytes_sum as f64 * 8.0 / dur
-        } else {
-            -1.0
-        };
-        let s_bytes_mean = if self.s_pkt_cnt > 0 {
-            self.s_bytes_sum as f64 / self.s_pkt_cnt as f64
-        } else {
-            -1.0
-        };
-        let d_bytes_mean = if self.d_pkt_cnt > 0 {
-            self.d_bytes_sum as f64 / self.d_pkt_cnt as f64
-        } else {
-            -1.0
-        };
-        let s_iat_mean = if self.s_pkt_cnt > 0 {
-            self.s_last_ts.saturating_sub(self.syn_ts) as f64 / self.s_pkt_cnt as f64
-        } else {
-            -1.0
-        };
-        let d_iat_mean = if self.d_pkt_cnt > 0 {
-         self.d_last_ts.saturating_sub(self.syn_ack_ts) as f64
-           
-            / self.d_pkt_cnt as f64
-        } else {
-            -1.0
-        };
+        let s_ttl_mean = safe_divide(self.s_ttl_sum as f64, self.s_pkt_cnt as f64);
+        let d_ttl_mean = safe_divide(self.d_ttl_sum as f64, self.d_pkt_cnt as f64);
+        let s_load = safe_divide(self.s_bytes_sum as f64 * 8e9, dur);
+        let d_load = safe_divide(self.d_bytes_sum as f64 * 8e9, dur);
+        let s_bytes_mean =  safe_divide(self.s_bytes_sum as f64, self.s_pkt_cnt as f64);
+        let d_bytes_mean =  safe_divide(self.d_bytes_sum as f64, self.d_pkt_cnt as f64);
+        let s_iat_mean = safe_divide(self.s_last_ts.saturating_sub(self.syn_ts) as f64, self.s_pkt_cnt as f64);
+        let d_iat_mean = safe_divide(self.d_last_ts.saturating_sub(self.syn_ack_ts) as f64, self.d_pkt_cnt as f64);
         let syn_ack = self.syn_ack_ts.saturating_sub(self.syn_ts) as f64;
         let ack_dat = self.ack_ts.saturating_sub(self.syn_ack_ts) as f64;
         let tcp_rtt = syn_ack + ack_dat;
@@ -243,7 +205,6 @@ impl Trackable for TrackedFeatures {
         TrackedFeatures {
             #[cfg(feature = "timing")]
             compute_ns: 0,
-            // sni: String::new(),
             syn_ts: -1,
             syn_ack_ts: -1,
             ack_ts: -1,
@@ -266,9 +227,7 @@ impl Trackable for TrackedFeatures {
     }
 
     fn on_match(&mut self, _session: Session, _subscription: &Subscription<Self::Subscribed>) {
-        // if let SessionData::Tls(tls) = session.data {
-        //     self.sni = tls.sni().to_string();
-        // }
+
     }
 
     fn post_match(&mut self, pdu: L4Pdu, subscription: &Subscription<Self::Subscribed>) {
@@ -296,10 +255,11 @@ impl Trackable for TrackedFeatures {
     }
 }
 
-// fn safe_divide(dividend: i64, divisor: i64, fallback: f64) -> f64 {
-//     if divisor != 0.0 {
-//         dividend / divisor
-//     } else {
-//         fallback
-//     }
-// }
+fn safe_divide(dividend: f64, divisor: f64) -> f64 {
+    // require that divisor be greater than 0 to avoid invalid features
+    if divisor > 0.0 {
+        dividend / divisor
+    } else {
+        -1.0
+    }
+}
