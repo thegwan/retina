@@ -100,8 +100,8 @@ impl TrackedFeatures {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
 
-        // let curr_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as i64;
-        let curr_ts = segment.mbuf_ref().timestamp().saturating_mul(1000i64);
+        let curr_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as i64;
+        // let curr_ts = segment.mbuf_ref().timestamp().saturating_mul(1000i64);
 
         let mbuf = segment.mbuf_ref();
         let eth = mbuf.parse_to::<Ethernet>()?;
