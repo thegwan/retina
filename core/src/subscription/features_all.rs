@@ -260,9 +260,9 @@ impl Trackable for TrackedFeatures {
     }
 
     fn pre_match(&mut self, pdu: L4Pdu, _session_id: Option<usize>, subscription: &Subscription<Self::Subscribed>) {
-        tsc_start!(t);
+        timer_start!(t);
         self.update(pdu).unwrap_or(());
-        tsc_elapsed!(subscription.timers, "update", t);
+        timer_elapsed_nanos!(subscription.timers, "update", t);
     }
 
     fn on_match(&mut self, _session: Session, _subscription: &Subscription<Self::Subscribed>) {
@@ -272,20 +272,21 @@ impl Trackable for TrackedFeatures {
     }
 
     fn post_match(&mut self, pdu: L4Pdu, subscription: &Subscription<Self::Subscribed>) {
-        tsc_start!(t);
+        timer_start!(t);
         self.update(pdu).unwrap_or(());
-        tsc_elapsed!(subscription.timers, "update", t);
+        timer_elapsed_nanos!(subscription.timers, "update", t);
     }
 
     fn on_terminate(&mut self, subscription: &Subscription<Self::Subscribed>) {
-        tsc_start!(t);
+        timer_start!(t);
         let features = self.extract_features();
-        tsc_elapsed!(subscription.timers, "extract_features", t);
+        timer_elapsed_nanos!(subscription.timers, "extract_features", t);
+        
         let conn = Features {
             // sni: self.sni.clone(),
             features,
         };
-        tsc_record!(subscription.timers, "compute_ns", self.compute_ns);
+        timer_record!(subscription.timers, "compute_ns", self.compute_ns);
         subscription.invoke(conn);
     }
 
