@@ -12,8 +12,8 @@ nb_memory_channels = 6
     cache_size = 512
 
 [offline]
-   # pcap = "./traces/small_flows.pcap"
- #   pcap = "/home/gerryw/sample_pcaps/smallFlows.pcap"
+#    # pcap = "./traces/small_flows.pcap"
+#     pcap = "/home/gerryw/sample_pcaps/smallFlows.pcap"
     pcap = "/mnt/netml/datasets/unsw_iot"
     mtu = 9702
 
