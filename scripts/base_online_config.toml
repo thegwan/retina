@@ -51,5 +51,5 @@ nb_memory_channels = 6
     tcp_establish_timeout = 5000
 
 [timing]
-    outfile = "./cycles_features.csv"
+    outfile = "./compute_features.csv"
 

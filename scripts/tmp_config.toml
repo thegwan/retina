@@ -12,7 +12,7 @@ nb_memory_channels = 6
     cache_size = 512
 
 [offline]
-    pcap = "./traces/small_flows.pcap"
+    pcap = "/mnt/netml/datasets/unsw_iot/pcaps"
     mtu = 9702
 
 [conntrack]
@@ -24,4 +24,4 @@ nb_memory_channels = 6
     tcp_establish_timeout = 5000
 
 [timing]
-    outfile = "/mnt/netml/results/test/cycles_features_dur.csv"
+    outfile = "/mnt/netml/results/test/compute_features_dur.csv"

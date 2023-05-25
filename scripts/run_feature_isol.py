@@ -29,8 +29,8 @@ def modify_binary(template_file, feature):
     return False
 
 def modify_config(template_file, directory, feature):
-    old_text = 'outfile = "./cycles_features.csv"'
-    new_text = f'outfile = "{directory}/cycles_features_{feature}.csv"'
+    old_text = 'outfile = "./compute_features.csv"'
+    new_text = f'outfile = "{directory}/compute_features_{feature}.csv"'
     with open(template_file, 'r', encoding='utf-8') as file:
         filedata = file.read()
     if old_text in filedata:
@@ -70,7 +70,7 @@ def run_binary(directory, feature, release, online):
     
     config_file = '/home/gerryw/retina/scripts/tmp_config.toml'
     out_file = f'{directory}/out_features_{feature}.json'
-    cmd = f'sudo env LD_LIBRARY_PATH=$LD_LIBRARY_PATH RUST_LOG=error {executable} -c {config_file} -o {out_file}'
+    cmd = f'sudo env LD_LIBRARY_PATH=$LD_LIBRARY_PATH RUST_LOG=info {executable} -c {config_file} -o {out_file}'
 
     print(GREEN + f'> Running `{cmd}`' + RESET)
 
