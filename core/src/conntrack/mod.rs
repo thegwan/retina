@@ -140,7 +140,7 @@ where
 
     /// Drains any remaining connections that satisfy the filter on runtime termination.
     pub(crate) fn drain(&mut self, subscription: &Subscription<T::Subscribed>) {
-        log::info!("Draining Connection table");
+        log::trace!("Draining Connection table");
         for (_, mut conn) in self.table.drain() {
             conn.terminate(subscription);
         }
