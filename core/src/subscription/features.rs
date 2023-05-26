@@ -11,7 +11,7 @@ use crate::protocols::packet::ipv4::Ipv4;
 use crate::protocols::packet::tcp::Tcp;
 use crate::protocols::packet::Packet;
 use crate::protocols::stream::{ConnParser, Session};
-use crate::subscription::{Level, Subscribable, Subscription, Trackable};
+use crate::subscription::*;
 
 use std::fmt;
 
@@ -55,7 +55,7 @@ impl Features {}
 
 fn serialize_mac_addr<S>(mac: &pnet::datalink::MacAddr, serializer: S) -> Result<S::Ok, S::Error>
 where
-    S: serde::Serializer,
+    S: Serializer,
 {
     serializer.serialize_str(&mac.to_string())
 }
@@ -189,24 +189,24 @@ impl TrackedFeatures {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
 
-        let dur = (self.s_last_ts.max(self.d_last_ts)).saturating_sub(self.syn_ts) as f64;
-        let s_ttl_mean = safe_divide(self.s_ttl_sum as f64, self.s_pkt_cnt as f64);
-        let d_ttl_mean = safe_divide(self.d_ttl_sum as f64, self.d_pkt_cnt as f64);
-        let s_load = safe_divide(self.s_bytes_sum as f64 * 8e9, dur);
-        let d_load = safe_divide(self.d_bytes_sum as f64 * 8e9, dur);
-        let s_bytes_mean = safe_divide(self.s_bytes_sum as f64, self.s_pkt_cnt as f64);
-        let d_bytes_mean = safe_divide(self.d_bytes_sum as f64, self.d_pkt_cnt as f64);
-        let s_iat_mean = safe_divide(
-            self.s_last_ts.saturating_sub(self.syn_ts) as f64,
+        let dur = safe_sub(self.s_last_ts.max(self.d_last_ts) as f64, self.syn_ts as f64);
+        let s_ttl_mean = safe_div(self.s_ttl_sum as f64, self.s_pkt_cnt as f64);
+        let d_ttl_mean = safe_div(self.d_ttl_sum as f64, self.d_pkt_cnt as f64);
+        let s_load = safe_div(self.s_bytes_sum as f64 * 8e9, dur);
+        let d_load = safe_div(self.d_bytes_sum as f64 * 8e9, dur);
+        let s_bytes_mean = safe_div(self.s_bytes_sum as f64, self.s_pkt_cnt as f64);
+        let d_bytes_mean = safe_div(self.d_bytes_sum as f64, self.d_pkt_cnt as f64);
+        let s_iat_mean = safe_div(
+            safe_sub(self.s_last_ts as f64, self.syn_ts as f64),
             self.s_pkt_cnt as f64,
         );
-        let d_iat_mean = safe_divide(
-            self.d_last_ts.saturating_sub(self.syn_ack_ts) as f64,
+        let d_iat_mean = safe_div(
+            safe_sub(self.d_last_ts as f64, self.syn_ack_ts as f64),
             self.d_pkt_cnt as f64,
         );
-        let syn_ack = self.syn_ack_ts.saturating_sub(self.syn_ts) as f64;
-        let ack_dat = self.ack_ts.saturating_sub(self.syn_ack_ts) as f64;
-        let tcp_rtt = syn_ack + ack_dat;
+        let syn_ack = safe_sub(self.syn_ack_ts as f64, self.syn_ts as f64);
+        let ack_dat = safe_sub(self.ack_ts as f64, self.syn_ack_ts as f64);
+        let tcp_rtt = safe_add(syn_ack as f64, ack_dat as f64);
         let features = Features {
             dur,
             proto: self.proto as f64,
@@ -296,7 +296,7 @@ impl Trackable for TrackedFeatures {
     }
 }
 
-fn safe_divide(dividend: f64, divisor: f64) -> f64 {
+fn safe_div(dividend: f64, divisor: f64) -> f64 {
     // require that divisor be greater than 0 to avoid invalid features
     if divisor > 0.0 {
         dividend / divisor

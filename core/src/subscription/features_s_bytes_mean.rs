@@ -10,7 +10,7 @@ use crate::protocols::packet::ethernet::Ethernet;
 use crate::protocols::packet::ipv4::Ipv4;
 use crate::protocols::packet::Packet;
 use crate::protocols::stream::{ConnParser, Session};
-use crate::subscription::{Level, Subscribable, Subscription, Trackable};
+use crate::subscription::*;
 
 use std::fmt;
 
@@ -121,7 +121,7 @@ impl TrackedFeatures {
     fn extract_features(&mut self) -> Vec<f64> {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-        let s_bytes_mean = safe_divide(self.s_bytes_sum as f64, self.s_pkt_cnt as f64);
+        let s_bytes_mean = safe_div(self.s_bytes_sum as f64, self.s_pkt_cnt as f64);
 
         let features = vec![s_bytes_mean];
         #[cfg(feature = "timing")]
@@ -179,11 +179,3 @@ impl Trackable for TrackedFeatures {
     }
 }
 
-fn safe_divide(dividend: f64, divisor: f64) -> f64 {
-    // require that divisor be greater than 0 to avoid invalid features
-    if divisor > 0.0 {
-        dividend / divisor
-    } else {
-        -1.0
-    }
-}

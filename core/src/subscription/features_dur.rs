@@ -7,7 +7,7 @@ use crate::dpdk::{rte_get_tsc_hz, rte_rdtsc};
 use crate::filter::FilterResult;
 use crate::memory::mbuf::Mbuf;
 use crate::protocols::stream::{ConnParser, Session};
-use crate::subscription::{Level, Subscribable, Subscription, Trackable};
+use crate::subscription::*;
 
 use std::fmt;
 
@@ -118,7 +118,7 @@ impl TrackedFeatures {
     fn extract_features(&mut self) -> Vec<f64> {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-        let dur = (self.s_last_ts.max(self.d_last_ts)).saturating_sub(self.syn_ts) as f64;
+        let dur = safe_sub(self.s_last_ts.max(self.d_last_ts) as f64, self.syn_ts as f64);
         let features = vec![dur];
         #[cfg(feature = "timing")]
         {

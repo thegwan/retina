@@ -11,7 +11,7 @@ use crate::protocols::packet::ipv4::Ipv4;
 use crate::protocols::packet::tcp::Tcp;
 use crate::protocols::packet::Packet;
 use crate::protocols::stream::{ConnParser, Session};
-use crate::subscription::{Level, Subscribable, Subscription, Trackable};
+use crate::subscription::*;
 
 use std::fmt;
 
@@ -136,7 +136,7 @@ impl TrackedFeatures {
     fn extract_features(&mut self) -> Vec<f64> {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-        let syn_ack = self.syn_ack_ts.saturating_sub(self.syn_ts) as f64;
+        let syn_ack = safe_sub(self.syn_ack_ts as f64, self.syn_ts as f64);
         let features = vec![syn_ack];
         #[cfg(feature = "timing")]
         {

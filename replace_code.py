@@ -16,11 +16,8 @@ def replace_in_file(file_path, old_text, new_text):
     with open(file_path, 'w', encoding='utf-8') as file:
         file.write(filedata)
 
-old_block = """fn update(&mut self, segment: L4Pdu) -> Result<()> {
-"""
-new_block = """fn update(&mut self, segment: L4Pdu) -> Result<()> {
-        self.cnt += 1;
-"""
+old_block = """use crate::subscription::{Level, Subscribable, Subscription, Trackable};"""
+new_block = """use crate::subscription::*;"""
 
 if len(sys.argv) != 2:
     print("Usage: python script.py <directory>")
