@@ -90,9 +90,9 @@ pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
     cnt: u64,
-    syn_ts: i64,
-    syn_ack_ts: i64,
-    ack_ts: i64,
+    syn_ts: f64,
+    syn_ack_ts: f64,
+    ack_ts: f64,
 }
 
 impl TrackedFeatures {
@@ -101,22 +101,27 @@ impl TrackedFeatures {
         self.cnt += 1;
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-        let curr_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as i64;
-        // let curr_ts = segment.mbuf_ref().timestamp().saturating_mul(1000i64);
+        
+        let curr_ts = unsafe { rte_rdtsc() } as f64 / *TSC_GHZ;
+        // let curr_ts = segment.mbuf_ref().timestamp() as f64 * 1e3;
 
         let mbuf = segment.mbuf_ref();
         let eth = mbuf.parse_to::<Ethernet>()?;
         let ipv4 = eth.parse_to::<Ipv4>()?;
 
         if segment.dir {
-            if self.syn_ack_ts != -1 && self.ack_ts == -1 {
+            if self.syn_ts.is_nan() {
+                // first packet is SYN
+                self.syn_ts = curr_ts;
+            }
+            if !self.syn_ack_ts.is_nan() && self.ack_ts.is_nan() {
                 let tcp = ipv4.parse_to::<Tcp>()?;
                 if tcp.ack() {
                     self.ack_ts = curr_ts;
                 }
             }
         } else {
-            if self.syn_ack_ts == -1 && self.ack_ts == -1 {
+            if self.syn_ack_ts.is_nan() && !self.ack_ts.is_nan() {
                 let tcp = ipv4.parse_to::<Tcp>()?;
                 if tcp.synack() {
                     self.syn_ack_ts = curr_ts;
@@ -135,9 +140,9 @@ impl TrackedFeatures {
     fn extract_features(&mut self) -> Vec<f64> {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-        let syn_ack = safe_sub(self.syn_ack_ts as f64, self.syn_ts as f64);
-        let ack_dat = safe_sub(self.ack_ts as f64, self.syn_ack_ts as f64);
-        let tcp_rtt = safe_add(syn_ack as f64, ack_dat as f64);
+        let syn_ack = self.syn_ack_ts - self.syn_ts;
+        let ack_dat = self.ack_ts - self.syn_ack_ts;
+        let tcp_rtt = syn_ack + ack_dat;
         let features = vec![tcp_rtt];
         #[cfg(feature = "timing")]
         {
@@ -152,14 +157,13 @@ impl Trackable for TrackedFeatures {
     type Subscribed = Features;
 
     fn new(_five_tuple: FiveTuple) -> Self {
-        let tsc = unsafe { rte_rdtsc() } as i64;
         TrackedFeatures {
             #[cfg(feature = "timing")]
             compute_ns: 0,
             cnt: 0,
-            syn_ts: tsc,
-            syn_ack_ts: -1,
-            ack_ts: -1,
+            syn_ts: f64::NAN,
+            syn_ack_ts: f64::NAN,
+            ack_ts: f64::NAN,
         }
     }
 

@@ -182,39 +182,3 @@ where
         (self.callback)(obj);
     }
 }
-
-/// Safe addition for missing operands
-pub(crate) fn safe_add(a: f64, b: f64) -> f64 {
-    if a < 0.0 || b < 0.0 {
-        -1.0
-    } else {
-        a + b
-    }
-}
-
-/// Safe subtraction for missing operands
-pub(crate) fn safe_sub(a: f64, b: f64) -> f64 {
-    if a < 0.0 || b < 0.0 {
-        -1.0
-    } else {
-        a - b
-    }
-}
-
-/// Safe multiplication for missing operands
-pub(crate) fn safe_mul(a: f64, b: f64) -> f64 {
-    if a < 0.0 || b < 0.0 {
-        -1.0
-    } else {
-        a * b
-    }
-}
-
-/// Safe division for missing operands
-pub(crate) fn safe_div(a: f64, b: f64) -> f64 {
-    if a < 0.0 || b < 0.0 {
-        -1.0
-    } else {
-        a / b
-    }
-}

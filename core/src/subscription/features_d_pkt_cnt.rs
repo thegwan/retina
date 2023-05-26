@@ -86,7 +86,7 @@ pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
     cnt: u64,
-    d_pkt_cnt: i64,
+    d_pkt_cnt: f64,
 }
 
 impl TrackedFeatures {
@@ -98,7 +98,7 @@ impl TrackedFeatures {
 
         if segment.dir {
         } else {
-            self.d_pkt_cnt += 1;
+            self.d_pkt_cnt += 1.0;
         }
         #[cfg(feature = "timing")]
         {
@@ -112,7 +112,7 @@ impl TrackedFeatures {
     fn extract_features(&mut self) -> Vec<f64> {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-        let features = vec![self.d_pkt_cnt as f64];
+        let features = vec![self.d_pkt_cnt];
         #[cfg(feature = "timing")]
         {
             let end_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
@@ -130,7 +130,7 @@ impl Trackable for TrackedFeatures {
             #[cfg(feature = "timing")]
             compute_ns: 0,
             cnt: 0,
-            d_pkt_cnt: 0,
+            d_pkt_cnt: 0.0,
         }
     }
 

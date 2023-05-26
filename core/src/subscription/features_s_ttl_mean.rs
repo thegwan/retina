@@ -89,8 +89,8 @@ pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
     cnt: u64,
-    s_pkt_cnt: i64,
-    s_ttl_sum: i64,
+    s_pkt_cnt: f64,
+    s_ttl_sum: f64,
 }
 
 impl TrackedFeatures {
@@ -105,8 +105,8 @@ impl TrackedFeatures {
         let ipv4 = eth.parse_to::<Ipv4>()?;
 
         if segment.dir {
-            self.s_pkt_cnt += 1;
-            self.s_ttl_sum += ipv4.time_to_live() as i64;
+            self.s_pkt_cnt += 1.0;
+            self.s_ttl_sum += ipv4.time_to_live() as f64;
         } else {
         }
         #[cfg(feature = "timing")]
@@ -121,7 +121,7 @@ impl TrackedFeatures {
     fn extract_features(&mut self) -> Vec<f64> {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-        let s_ttl_mean = safe_div(self.s_ttl_sum as f64, self.s_pkt_cnt as f64);
+        let s_ttl_mean = self.s_ttl_sum / self.s_pkt_cnt;
 
         let features = vec![s_ttl_mean];
         #[cfg(feature = "timing")]
@@ -141,8 +141,8 @@ impl Trackable for TrackedFeatures {
             #[cfg(feature = "timing")]
             compute_ns: 0,
             cnt: 0,
-            s_pkt_cnt: 0,
-            s_ttl_sum: 0,
+            s_pkt_cnt: 0.0,
+            s_ttl_sum: 0.0,
         }
     }
 

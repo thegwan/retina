@@ -89,10 +89,10 @@ pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
     cnt: u64,
-    syn_ts: i64,
-    s_last_ts: i64,
-    d_last_ts: i64,
-    s_bytes_sum: i64,
+    syn_ts: f64,
+    s_last_ts: f64,
+    d_last_ts: f64,
+    s_bytes_sum: f64,
 }
 
 impl TrackedFeatures {
@@ -102,16 +102,20 @@ impl TrackedFeatures {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
 
-        let curr_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as i64;
-        // let curr_ts = segment.mbuf_ref().timestamp().saturating_mul(1000i64);
+        let curr_ts = unsafe { rte_rdtsc() } as f64 / *TSC_GHZ;
+        // let curr_ts = segment.mbuf_ref().timestamp() as f64 * 1e3;
 
         let mbuf = segment.mbuf_ref();
         let eth = mbuf.parse_to::<Ethernet>()?;
         let ipv4 = eth.parse_to::<Ipv4>()?;
 
         if segment.dir {
+            if self.syn_ts.is_nan() {
+                // first packet is SYN
+                self.syn_ts = curr_ts;
+            }
             self.s_last_ts = curr_ts;
-            self.s_bytes_sum += ipv4.total_length() as i64;
+            self.s_bytes_sum += ipv4.total_length() as f64;
         } else {
             self.d_last_ts = curr_ts;
         }
@@ -127,8 +131,8 @@ impl TrackedFeatures {
     fn extract_features(&mut self) -> Vec<f64> {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-        let dur = safe_sub(self.s_last_ts.max(self.d_last_ts) as f64, self.syn_ts as f64);
-        let s_load = safe_div(self.s_bytes_sum as f64 * 8e9, dur);
+        let dur = self.s_last_ts.max(self.d_last_ts) - self.syn_ts;
+        let s_load = self.s_bytes_sum * 8e9 / dur;
 
         let features = vec![s_load];
         #[cfg(feature = "timing")]
@@ -144,15 +148,14 @@ impl Trackable for TrackedFeatures {
     type Subscribed = Features;
 
     fn new(_five_tuple: FiveTuple) -> Self {
-        let tsc = unsafe { rte_rdtsc() } as i64;
         TrackedFeatures {
             #[cfg(feature = "timing")]
             compute_ns: 0,
             cnt: 0,
-            syn_ts: tsc,
-            s_last_ts: tsc,
-            d_last_ts: -1,
-            s_bytes_sum: 0,
+            syn_ts: f64::NAN,
+            s_last_ts: f64::NAN,
+            d_last_ts: f64::NAN,
+            s_bytes_sum: 0.0,
         }
     }
 

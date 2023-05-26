@@ -89,7 +89,7 @@ pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
     cnt: u64,
-    proto: i64,
+    proto: f64,
 }
 
 impl TrackedFeatures {
@@ -103,7 +103,7 @@ impl TrackedFeatures {
         let eth = mbuf.parse_to::<Ethernet>()?;
         let ipv4 = eth.parse_to::<Ipv4>()?;
 
-        self.proto = ipv4.protocol() as i64;
+        self.proto = ipv4.protocol() as f64;
         #[cfg(feature = "timing")]
         {
             let end_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
@@ -116,7 +116,7 @@ impl TrackedFeatures {
     fn extract_features(&mut self) -> Vec<f64> {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-        let features = vec![self.proto as f64];
+        let features = vec![self.proto];
         #[cfg(feature = "timing")]
         {
             let end_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
@@ -134,7 +134,7 @@ impl Trackable for TrackedFeatures {
             #[cfg(feature = "timing")]
             compute_ns: 0,
             cnt: 0,
-            proto: -1,
+            proto: f64::NAN,
         }
     }
 

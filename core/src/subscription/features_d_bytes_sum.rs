@@ -88,7 +88,7 @@ pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
     cnt: u64,
-    d_bytes_sum: i64,
+    d_bytes_sum: f64,
 }
 
 impl TrackedFeatures {
@@ -104,7 +104,7 @@ impl TrackedFeatures {
 
         if segment.dir {
         } else {
-            self.d_bytes_sum += ipv4.total_length() as i64;
+            self.d_bytes_sum += ipv4.total_length() as f64;
         }
 
         #[cfg(feature = "timing")]
@@ -119,7 +119,7 @@ impl TrackedFeatures {
     fn extract_features(&mut self) -> Vec<f64> {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-        let features = vec![self.d_bytes_sum as f64];
+        let features = vec![self.d_bytes_sum];
         #[cfg(feature = "timing")]
         {
             let end_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
@@ -137,7 +137,7 @@ impl Trackable for TrackedFeatures {
             #[cfg(feature = "timing")]
             compute_ns: 0,
             cnt: 0,
-            d_bytes_sum: 0,
+            d_bytes_sum: 0.0,
         }
     }
 

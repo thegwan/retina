@@ -86,9 +86,9 @@ pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
     cnt: u64,
-    syn_ack_ts: i64,
-    d_last_ts: i64,
-    d_pkt_cnt: i64,
+    syn_ack_ts: f64,
+    d_last_ts: f64,
+    d_pkt_cnt: f64,
 }
 
 impl TrackedFeatures {
@@ -98,13 +98,13 @@ impl TrackedFeatures {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
 
-        let curr_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as i64;
-        // let curr_ts = segment.mbuf_ref().timestamp().saturating_mul(1000i64);
+        let curr_ts = unsafe { rte_rdtsc() } as f64 / *TSC_GHZ;
+        // let curr_ts = segment.mbuf_ref().timestamp() as f64 * 1e3;
 
         if segment.dir {
         } else {
             self.d_last_ts = curr_ts;
-            self.d_pkt_cnt += 1;
+            self.d_pkt_cnt += 1.0;
         }
 
         #[cfg(feature = "timing")]
@@ -120,10 +120,7 @@ impl TrackedFeatures {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
 
-        let d_iat_mean = safe_div(
-            safe_sub(self.d_last_ts as f64, self.syn_ack_ts as f64),
-            self.d_pkt_cnt as f64,
-        );
+        let d_iat_mean = (self.d_last_ts - self.syn_ack_ts) / self.d_pkt_cnt;
 
         let features = vec![d_iat_mean];
         #[cfg(feature = "timing")]
@@ -143,9 +140,9 @@ impl Trackable for TrackedFeatures {
             #[cfg(feature = "timing")]
             compute_ns: 0,
             cnt: 0,
-            syn_ack_ts: -1,
-            d_last_ts: -1,
-            d_pkt_cnt: 0,
+            syn_ack_ts: f64::NAN,
+            d_last_ts: f64::NAN,
+            d_pkt_cnt: 0.0,
         }
     }
 
