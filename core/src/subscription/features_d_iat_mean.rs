@@ -175,8 +175,7 @@ impl Trackable for TrackedFeatures {
     }
 
     fn early_terminate(&self) -> bool {
-        // self.ctos.packet_cnt + self.stoc.packet_cnt >= 4
-        false
+        self.ctos.packet_cnt + self.stoc.packet_cnt >= 1
     }
 }
 

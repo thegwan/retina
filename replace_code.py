@@ -16,11 +16,14 @@ def replace_in_file(file_path, old_text, new_text):
     with open(file_path, 'w', encoding='utf-8') as file:
         file.write(filedata)
 
-old_block = """// let curr_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as i64;
-        let curr_ts = segment.mbuf_ref().timestamp().saturating_mul(1000i64);
+old_block = """fn early_terminate(&self) -> bool {
+        // self.ctos.packet_cnt + self.stoc.packet_cnt >= 4
+        false
+    }
 """
-new_block = """let curr_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as i64;
-        // let curr_ts = segment.mbuf_ref().timestamp().saturating_mul(1000i64);
+new_block = """fn early_terminate(&self) -> bool {
+        self.ctos.packet_cnt + self.stoc.packet_cnt >= 1
+    }
 """
 
 if len(sys.argv) != 2:
