@@ -1,3 +1,7 @@
+"""
+Usage: python3 scripts/run_feature_isol.py -d /mnt/netml/results/test
+"""
+
 import subprocess, re, os
 import toml
 import argparse
@@ -14,6 +18,32 @@ CYAN = '\033[36m'
 WHITE = '\033[37m'
 RESET = '\033[0m'
 BOLD = '\033[1m'
+
+def modify_pkt_depth(subscription_module, pkt_depth):
+    old_code = r"fn early_terminate\(&self\) -> bool \{.*?\}"
+    if pkt_depth == 'all':
+        new_code = r"fn early_terminate(&self) -> bool {\n        false\n    }"
+    else:
+        new_code = fr"fn early_terminate(&self) -> bool {{\n        self.cnt >= {pkt_depth}\n    }}"
+    print(new_code)
+    for root, dirs, files in os.walk(subscription_module):
+        for file in files:
+            if file.endswith(".rs"):  # Modify this line to select the file types you want
+                file_path = os.path.join(root, file)
+                
+
+                with open(file_path, 'r', encoding='utf-8') as file:
+                    filedata = file.read()
+
+                new_filedata = re.sub(old_code, new_code, filedata, flags=re.DOTALL)
+
+                if filedata != new_filedata:
+                    print(f"{file_path}: modified")
+                    with open(file_path, 'w', encoding='utf-8') as file:
+                        file.write(new_filedata)
+                else:
+                    print(f"{file_path}: no changes")
+
 
 def modify_binary(template_file, feature):
     old_text = 'use retina_core::subscription::features::Features;'
@@ -124,46 +154,49 @@ def main(args):
         'ack_dat',
     ]
 
-    directory = args.directory
-    release_mode = args.release
-    online_mode = args.online
+    pkt_depths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 'all']
 
     errors = {}
-    for feature in ft_names:
-        print(CYAN + BOLD + feature + RESET)
+    for pkt_depth in pkt_depths:
+        print(YELLOW +BOLD + str(pkt_depth) + RESET)
+        modify_pkt_depth('/home/gerryw/retina/core/src/subscription/', pkt_depth)
+        directory = f'{args.directory}/pkts_{pkt_depth}'
+        os.makedirs(directory, exist_ok=True)
+        print(YELLOW +BOLD + directory + RESET)
         
-        if not modify_binary('/home/gerryw/retina/scripts/base_extract_features.rs', feature):
-            print(f'Failed to modify binary template for `{feature}`, skipping...')
-            errors[feature] = 'modify_binary'
+        for feature in ft_names:
+            print(CYAN + BOLD + feature + RESET)
+            
+            if not modify_binary('/home/gerryw/retina/scripts/base_extract_features.rs', feature):
+                print(f'Failed to modify binary template for `{feature}`, skipping...')
+                errors[feature] = 'modify_binary'
+            
+            if args.online:
+                config_file = '/home/gerryw/retina/scripts/base_online_config.toml'
+            else:
+                config_file = '/home/gerryw/retina/scripts/base_offline_config.toml'
+            
+            if not modify_config(config_file, directory, feature):
+                print(f'Failed to modify config template for `{feature}`, skipping...')
+                errors[feature] = 'modify_config'
+            
+            if not compile_binary(release=args.release):
+                print(f'Failed to compile for `{feature}`, skipping...')
+                errors[feature] = 'compile'
+                continue
         
-        if args.online:
-            config_file = '/home/gerryw/retina/scripts/base_online_config.toml'
-        else:
-            config_file = '/home/gerryw/retina/scripts/base_offline_config.toml'
-        
-        if not modify_config(config_file, args.directory, feature):
-            print(f'Failed to modify config template for `{feature}`, skipping...')
-            errors[feature] = 'modify_config'
-        
-        if not compile_binary(release=release_mode):
-            print(f'Failed to compile for `{feature}`, skipping...')
-            errors[feature] = 'compile'
-            continue
-       
-        mem_profiler = profile_memory(directory, feature)
-        if not run_binary(directory, feature, release=release_mode, online=online_mode):
-            print(f'Failed to run {feature}, skipping...')
-            errors[feature] = 'runtime'
-            continue
-        mem_profiler.terminate()
-        # terminate won't kill the child top process since it is running with shell=True
-        os.system(f'pkill -f top')
+            mem_profiler = profile_memory(directory, feature)
+            if not run_binary(directory, feature, release=args.release, online=args.online):
+                print(f'Failed to run {feature}, skipping...')
+                errors[feature] = 'runtime'
+                continue
+            mem_profiler.terminate()
+            # terminate won't kill the child top process since it is running with shell=True
+            os.system(f'pkill -f top')
 
     for error in errors.items():
         print(RED + f'Error: {str(error)}' + RESET)
             
-            
-
 
 def parse_args():
     parser = argparse.ArgumentParser()

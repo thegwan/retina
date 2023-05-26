@@ -13,6 +13,7 @@ nb_memory_channels = 6
 
 [offline]
     pcap = "/mnt/netml/datasets/unsw_iot/pcaps"
+    # pcap = "./traces/small_flows.pcap"
     mtu = 9702
 
 [conntrack]

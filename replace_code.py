@@ -1,3 +1,7 @@
+"""
+Usage: python3 replace_code.py core/src/subscription/
+"""
+
 import os
 import sys
 

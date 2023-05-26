@@ -286,7 +286,7 @@ impl Trackable for TrackedFeatures {
     }
 
     fn early_terminate(&self) -> bool {
-        self.cnt >= 1
+        false
     }
 }
 
