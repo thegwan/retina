@@ -17,12 +17,11 @@ def replace_in_file(file_path, old_text, new_text):
         file.write(filedata)
 
 old_block = """fn early_terminate(&self) -> bool {
-        // self.ctos.packet_cnt + self.stoc.packet_cnt >= 4
-        false
+        self.ctos.packet_cnt + self.stoc.packet_cnt >= 1
     }
 """
 new_block = """fn early_terminate(&self) -> bool {
-        self.ctos.packet_cnt + self.stoc.packet_cnt >= 1
+        self.s_pkt_cnt + self.d_pkt_cnt >= 1
     }
 """
 
