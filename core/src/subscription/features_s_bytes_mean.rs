@@ -88,6 +88,7 @@ impl Subscribable for Features {
 pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
+    cnt: u64,
     s_pkt_cnt: i64,
     s_bytes_sum: i64,
 }
@@ -95,6 +96,7 @@ pub struct TrackedFeatures {
 impl TrackedFeatures {
     #[inline]
     fn update(&mut self, segment: L4Pdu) -> Result<()> {
+        self.cnt += 1;
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
 
@@ -138,6 +140,7 @@ impl Trackable for TrackedFeatures {
         TrackedFeatures {
             #[cfg(feature = "timing")]
             compute_ns: 0,
+            cnt: 0,
             s_pkt_cnt: 0,
             s_bytes_sum: 0,
         }
@@ -172,7 +175,7 @@ impl Trackable for TrackedFeatures {
     }
 
     fn early_terminate(&self) -> bool {
-        self.s_pkt_cnt + self.d_pkt_cnt >= 1
+        self.cnt >= 1
     }
 }
 
