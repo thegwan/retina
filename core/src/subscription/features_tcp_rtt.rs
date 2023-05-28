@@ -121,7 +121,7 @@ impl TrackedFeatures {
                 }
             }
         } else {
-            if self.syn_ack_ts.is_nan() && !self.ack_ts.is_nan() {
+            if self.syn_ack_ts.is_nan() && self.ack_ts.is_nan() {
                 let tcp = ipv4.parse_to::<Tcp>()?;
                 if tcp.synack() {
                     self.syn_ack_ts = curr_ts;

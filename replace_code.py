@@ -20,8 +20,8 @@ def replace_in_file(file_path, old_text, new_text):
     with open(file_path, 'w', encoding='utf-8') as file:
         file.write(filedata)
 
-old_block = """i64"""
-new_block = """f64"""
+old_block = """if self.syn_ack_ts.is_nan() && !self.ack_ts.is_nan()"""
+new_block = """if self.syn_ack_ts.is_nan() && self.ack_ts.is_nan()"""
 
 if len(sys.argv) != 2:
     print("Usage: python script.py <directory>")

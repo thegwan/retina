@@ -6,6 +6,10 @@ use crate::conntrack::ConnTracker;
 use crate::dpdk::{rte_get_tsc_hz, rte_rdtsc};
 use crate::filter::FilterResult;
 use crate::memory::mbuf::Mbuf;
+use crate::protocols::packet::ethernet::Ethernet;
+use crate::protocols::packet::ipv4::Ipv4;
+use crate::protocols::packet::tcp::Tcp;
+use crate::protocols::packet::Packet;
 use crate::protocols::stream::{ConnParser, Session};
 use crate::subscription::*;
 
@@ -101,10 +105,21 @@ impl TrackedFeatures {
         let curr_ts = unsafe { rte_rdtsc() } as f64 / *TSC_GHZ;
         // let curr_ts = segment.mbuf_ref().timestamp() as f64 * 1e3;
 
+        let mbuf = segment.mbuf_ref();
+        let eth = mbuf.parse_to::<Ethernet>()?;
+        let ipv4 = eth.parse_to::<Ipv4>()?;
+
         if segment.dir {
         } else {
             self.d_last_ts = curr_ts;
             self.d_pkt_cnt += 1.0;
+
+            if self.syn_ack_ts.is_nan() {
+                let tcp = ipv4.parse_to::<Tcp>()?;
+                if tcp.synack() {
+                    self.syn_ack_ts = curr_ts;
+                }
+            }
         }
 
         #[cfg(feature = "timing")]

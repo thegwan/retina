@@ -168,7 +168,7 @@ impl TrackedFeatures {
             self.d_pkt_cnt += 1.0;
             self.d_bytes_sum += ipv4.total_length() as f64;
             self.d_ttl_sum += ipv4.time_to_live() as f64;
-            if self.syn_ack_ts.is_nan() && !self.ack_ts.is_nan() {
+            if self.syn_ack_ts.is_nan() && self.ack_ts.is_nan() {
                 let tcp = ipv4.parse_to::<Tcp>()?;
                 if tcp.synack() {
                     self.syn_ack_ts = curr_ts;
