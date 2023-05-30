@@ -30,7 +30,8 @@ lazy_static! {
 pub struct Features {
     #[cfg(feature = "dur")]
     dur: f64,
-    // proto: f64,
+    #[cfg(feature = "proto")]
+    proto: f64,
     // s_bytes_sum: f64,
     // d_bytes_sum: f64,
     // s_ttl_mean: f64,
@@ -133,7 +134,8 @@ pub struct TrackedFeatures {
     // d_bytes_sum: f64,
     // s_ttl_sum: f64,
     // d_ttl_sum: f64,
-    // proto: f64,
+    #[cfg(feature = "proto")]
+    proto: f64,
     #[cfg(not(feature = "timing"))]
     s_mac: pnet::datalink::MacAddr,
     #[cfg(not(feature = "timing"))]
@@ -152,22 +154,26 @@ impl TrackedFeatures {
         #[cfg(not(feature = "timing"))]
         let curr_ts = segment.mbuf_ref().timestamp() as f64 * 1e3;
 
-        #[cfg(not(feature = "timing"))]
+        #[cfg(any(not(feature = "timing"), feature = "proto"))]
         let mbuf = segment.mbuf_ref();
-        #[cfg(not(feature = "timing"))]
+        #[cfg(any(not(feature = "timing"), feature = "proto"))]
         let eth = mbuf.parse_to::<Ethernet>()?;
-        // let ipv4 = eth.parse_to::<Ipv4>()?;
+        #[cfg(feature = "proto")]
+        let ipv4 = eth.parse_to::<Ipv4>()?;
 
         if segment.dir {
+            #[cfg(not(feature = "timing"))] 
+            if self.cnt == 1 {
+                self.s_mac = eth.src();
+                self.d_mac = eth.dst();
+            }
+
             #[cfg(feature = "dur")]
             if self.syn_ts.is_nan() {
                 // first packet is SYN
                 self.syn_ts = curr_ts;
-                #[cfg(not(feature = "timing"))] {
-                    self.s_mac = eth.src();
-                    self.d_mac = eth.dst();
-                }
             }
+
             #[cfg(feature = "dur")]
             { self.s_last_ts = curr_ts; }
             // self.s_pkt_cnt += 1.0;
@@ -192,7 +198,8 @@ impl TrackedFeatures {
         //         }
         //     }
         }
-        // self.proto = ipv4.protocol() as f64;
+        #[cfg(feature = "proto")]
+        { self.proto = ipv4.protocol() as f64; }
         #[cfg(feature = "timing")]
         {
             let end_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
@@ -222,7 +229,8 @@ impl TrackedFeatures {
         let features = Features {
             #[cfg(feature = "dur")]
             dur,
-            // proto: self.proto,
+            #[cfg(feature = "proto")]
+            proto: self.proto,
             // s_bytes_sum: self.s_bytes_sum,
             // d_bytes_sum: self.d_bytes_sum,
             // s_ttl_mean,
@@ -274,7 +282,8 @@ impl Trackable for TrackedFeatures {
             // d_bytes_sum: 0.0,
             // s_ttl_sum: 0.0,
             // d_ttl_sum: 0.0,
-            // proto: f64::NAN,
+            #[cfg(feature = "proto")]
+            proto: f64::NAN,
             #[cfg(not(feature = "timing"))]
             s_mac: pnet::datalink::MacAddr::zero(),
             #[cfg(not(feature = "timing"))]
