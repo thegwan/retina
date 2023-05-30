@@ -28,23 +28,24 @@ lazy_static! {
 /// A features record.
 #[derive(Debug, Serialize)]
 pub struct Features {
+    #[cfg(feature = "dur")]
     dur: f64,
-    proto: f64,
-    s_bytes_sum: f64,
-    d_bytes_sum: f64,
-    s_ttl_mean: f64,
-    d_ttl_mean: f64,
-    s_load: f64,
-    d_load: f64,
-    s_pkt_cnt: f64,
-    d_pkt_cnt: f64,
-    s_bytes_mean: f64,
-    d_bytes_mean: f64,
-    s_iat_mean: f64,
-    d_iat_mean: f64,
-    tcp_rtt: f64,
-    syn_ack: f64,
-    ack_dat: f64,
+    // proto: f64,
+    // s_bytes_sum: f64,
+    // d_bytes_sum: f64,
+    // s_ttl_mean: f64,
+    // d_ttl_mean: f64,
+    // s_load: f64,
+    // d_load: f64,
+    // s_pkt_cnt: f64,
+    // d_pkt_cnt: f64,
+    // s_bytes_mean: f64,
+    // d_bytes_mean: f64,
+    // s_iat_mean: f64,
+    // d_iat_mean: f64,
+    // tcp_rtt: f64,
+    // syn_ack: f64,
+    // ack_dat: f64,
     #[serde(serialize_with = "serialize_mac_addr")]
     #[cfg(not(feature = "timing"))]
     s_mac: pnet::datalink::MacAddr,
@@ -118,18 +119,21 @@ pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
     cnt: u64,
+    #[cfg(feature = "dur")]
     syn_ts: f64,
-    syn_ack_ts: f64,
-    ack_ts: f64,
+    // syn_ack_ts: f64,
+    // ack_ts: f64,
+    #[cfg(feature = "dur")]
     s_last_ts: f64,
+    #[cfg(feature = "dur")]
     d_last_ts: f64,
-    s_pkt_cnt: f64,
-    d_pkt_cnt: f64,
-    s_bytes_sum: f64,
-    d_bytes_sum: f64,
-    s_ttl_sum: f64,
-    d_ttl_sum: f64,
-    proto: f64,
+    // s_pkt_cnt: f64,
+    // d_pkt_cnt: f64,
+    // s_bytes_sum: f64,
+    // d_bytes_sum: f64,
+    // s_ttl_sum: f64,
+    // d_ttl_sum: f64,
+    // proto: f64,
     #[cfg(not(feature = "timing"))]
     s_mac: pnet::datalink::MacAddr,
     #[cfg(not(feature = "timing"))]
@@ -148,11 +152,14 @@ impl TrackedFeatures {
         #[cfg(not(feature = "timing"))]
         let curr_ts = segment.mbuf_ref().timestamp() as f64 * 1e3;
 
+        #[cfg(not(feature = "timing"))]
         let mbuf = segment.mbuf_ref();
+        #[cfg(not(feature = "timing"))]
         let eth = mbuf.parse_to::<Ethernet>()?;
-        let ipv4 = eth.parse_to::<Ipv4>()?;
+        // let ipv4 = eth.parse_to::<Ipv4>()?;
 
         if segment.dir {
+            #[cfg(feature = "dur")]
             if self.syn_ts.is_nan() {
                 // first packet is SYN
                 self.syn_ts = curr_ts;
@@ -161,29 +168,31 @@ impl TrackedFeatures {
                     self.d_mac = eth.dst();
                 }
             }
-            self.s_last_ts = curr_ts;
-            self.s_pkt_cnt += 1.0;
-            self.s_bytes_sum += ipv4.total_length() as f64;
-            self.s_ttl_sum += ipv4.time_to_live() as f64;
-            if !self.syn_ack_ts.is_nan() && self.ack_ts.is_nan() {
-                let tcp = ipv4.parse_to::<Tcp>()?;
-                if tcp.ack() {
-                    self.ack_ts = curr_ts;
-                }
-            }
+            #[cfg(feature = "dur")]
+            { self.s_last_ts = curr_ts; }
+            // self.s_pkt_cnt += 1.0;
+            // self.s_bytes_sum += ipv4.total_length() as f64;
+            // self.s_ttl_sum += ipv4.time_to_live() as f64;
+            // if !self.syn_ack_ts.is_nan() && self.ack_ts.is_nan() {
+            //     let tcp = ipv4.parse_to::<Tcp>()?;
+            //     if tcp.ack() {
+            //         self.ack_ts = curr_ts;
+            //     }
+            // }
         } else {
-            self.d_last_ts = curr_ts;
-            self.d_pkt_cnt += 1.0;
-            self.d_bytes_sum += ipv4.total_length() as f64;
-            self.d_ttl_sum += ipv4.time_to_live() as f64;
-            if self.syn_ack_ts.is_nan() && self.ack_ts.is_nan() {
-                let tcp = ipv4.parse_to::<Tcp>()?;
-                if tcp.synack() {
-                    self.syn_ack_ts = curr_ts;
-                }
-            }
+            #[cfg(feature = "dur")]
+            { self.d_last_ts = curr_ts; }
+        //     self.d_pkt_cnt += 1.0;
+        //     self.d_bytes_sum += ipv4.total_length() as f64;
+        //     self.d_ttl_sum += ipv4.time_to_live() as f64;
+        //     if self.syn_ack_ts.is_nan() && self.ack_ts.is_nan() {
+        //         let tcp = ipv4.parse_to::<Tcp>()?;
+        //         if tcp.synack() {
+        //             self.syn_ack_ts = curr_ts;
+        //         }
+        //     }
         }
-        self.proto = ipv4.protocol() as f64;
+        // self.proto = ipv4.protocol() as f64;
         #[cfg(feature = "timing")]
         {
             let end_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
@@ -197,36 +206,38 @@ impl TrackedFeatures {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
 
+        #[cfg(feature = "dur")]
         let dur = self.s_last_ts.max(self.d_last_ts) - self.syn_ts;
-        let s_ttl_mean = self.s_ttl_sum / self.s_pkt_cnt;
-        let d_ttl_mean = self.d_ttl_sum - self.d_pkt_cnt;
-        let s_load = self.s_bytes_sum * 8e9 / dur;
-        let d_load = self.d_bytes_sum * 8e9 / dur;
-        let s_bytes_mean = self.s_bytes_sum / self.s_pkt_cnt;
-        let d_bytes_mean = self.d_bytes_sum / self.d_pkt_cnt;
-        let s_iat_mean = (self.s_last_ts - self.syn_ts) / self.s_pkt_cnt;
-        let d_iat_mean = (self.d_last_ts - self.syn_ack_ts) / self.d_pkt_cnt;
-        let syn_ack = self.syn_ack_ts - self.syn_ts;
-        let ack_dat = self.ack_ts - self.syn_ack_ts;
-        let tcp_rtt = syn_ack + ack_dat;
+        // let s_ttl_mean = self.s_ttl_sum / self.s_pkt_cnt;
+        // let d_ttl_mean = self.d_ttl_sum - self.d_pkt_cnt;
+        // let s_load = self.s_bytes_sum * 8e9 / dur;
+        // let d_load = self.d_bytes_sum * 8e9 / dur;
+        // let s_bytes_mean = self.s_bytes_sum / self.s_pkt_cnt;
+        // let d_bytes_mean = self.d_bytes_sum / self.d_pkt_cnt;
+        // let s_iat_mean = (self.s_last_ts - self.syn_ts) / self.s_pkt_cnt;
+        // let d_iat_mean = (self.d_last_ts - self.syn_ack_ts) / self.d_pkt_cnt;
+        // let syn_ack = self.syn_ack_ts - self.syn_ts;
+        // let ack_dat = self.ack_ts - self.syn_ack_ts;
+        // let tcp_rtt = syn_ack + ack_dat;
         let features = Features {
+            #[cfg(feature = "dur")]
             dur,
-            proto: self.proto,
-            s_bytes_sum: self.s_bytes_sum,
-            d_bytes_sum: self.d_bytes_sum,
-            s_ttl_mean,
-            d_ttl_mean,
-            s_load,
-            d_load,
-            s_pkt_cnt: self.s_pkt_cnt,
-            d_pkt_cnt: self.d_pkt_cnt,
-            s_bytes_mean,
-            d_bytes_mean,
-            s_iat_mean,
-            d_iat_mean,
-            tcp_rtt,
-            syn_ack,
-            ack_dat,
+            // proto: self.proto,
+            // s_bytes_sum: self.s_bytes_sum,
+            // d_bytes_sum: self.d_bytes_sum,
+            // s_ttl_mean,
+            // d_ttl_mean,
+            // s_load,
+            // d_load,
+            // s_pkt_cnt: self.s_pkt_cnt,
+            // d_pkt_cnt: self.d_pkt_cnt,
+            // s_bytes_mean,
+            // d_bytes_mean,
+            // s_iat_mean,
+            // d_iat_mean,
+            // tcp_rtt,
+            // syn_ack,
+            // ack_dat,
             #[cfg(not(feature = "timing"))]
             s_mac: self.s_mac,
             #[cfg(not(feature = "timing"))]
@@ -249,18 +260,21 @@ impl Trackable for TrackedFeatures {
             #[cfg(feature = "timing")]
             compute_ns: 0,
             cnt: 0,
+            #[cfg(feature = "dur")]
             syn_ts: f64::NAN,
-            syn_ack_ts: f64::NAN,
-            ack_ts: f64::NAN,
+            // syn_ack_ts: f64::NAN,
+            // ack_ts: f64::NAN,
+            #[cfg(feature = "dur")]
             s_last_ts: f64::NAN,
+            #[cfg(feature = "dur")]
             d_last_ts: f64::NAN,
-            s_pkt_cnt: 0.0,
-            d_pkt_cnt: 0.0,
-            s_bytes_sum: 0.0,
-            d_bytes_sum: 0.0,
-            s_ttl_sum: 0.0,
-            d_ttl_sum: 0.0,
-            proto: f64::NAN,
+            // s_pkt_cnt: 0.0,
+            // d_pkt_cnt: 0.0,
+            // s_bytes_sum: 0.0,
+            // d_bytes_sum: 0.0,
+            // s_ttl_sum: 0.0,
+            // d_ttl_sum: 0.0,
+            // proto: f64::NAN,
             #[cfg(not(feature = "timing"))]
             s_mac: pnet::datalink::MacAddr::zero(),
             #[cfg(not(feature = "timing"))]
