@@ -46,8 +46,10 @@ pub struct Features {
     syn_ack: f64,
     ack_dat: f64,
     #[serde(serialize_with = "serialize_mac_addr")]
+    #[cfg(not(feature = "timing"))]
     s_mac: pnet::datalink::MacAddr,
     #[serde(serialize_with = "serialize_mac_addr")]
+    #[cfg(not(feature = "timing"))]
     d_mac: pnet::datalink::MacAddr,
 }
 
@@ -128,7 +130,9 @@ pub struct TrackedFeatures {
     s_ttl_sum: f64,
     d_ttl_sum: f64,
     proto: f64,
+    #[cfg(not(feature = "timing"))]
     s_mac: pnet::datalink::MacAddr,
+    #[cfg(not(feature = "timing"))]
     d_mac: pnet::datalink::MacAddr,
 }
 
@@ -138,8 +142,10 @@ impl TrackedFeatures {
         self.cnt += 1;
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-
-        // let curr_ts = unsafe { rte_rdtsc() } as f64 / *TSC_GHZ;
+        
+        #[cfg(feature = "timing")]
+        let curr_ts = unsafe { rte_rdtsc() } as f64 / *TSC_GHZ;
+        #[cfg(not(feature = "timing"))]
         let curr_ts = segment.mbuf_ref().timestamp() as f64 * 1e3;
 
         let mbuf = segment.mbuf_ref();
@@ -150,8 +156,10 @@ impl TrackedFeatures {
             if self.syn_ts.is_nan() {
                 // first packet is SYN
                 self.syn_ts = curr_ts;
-                self.s_mac = eth.src();
-                self.d_mac = eth.dst();
+                #[cfg(not(feature = "timing"))] {
+                    self.s_mac = eth.src();
+                    self.d_mac = eth.dst();
+                }
             }
             self.s_last_ts = curr_ts;
             self.s_pkt_cnt += 1.0;
@@ -219,7 +227,9 @@ impl TrackedFeatures {
             tcp_rtt,
             syn_ack,
             ack_dat,
+            #[cfg(not(feature = "timing"))]
             s_mac: self.s_mac,
+            #[cfg(not(feature = "timing"))]
             d_mac: self.d_mac,
         };
         #[cfg(feature = "timing")]
@@ -251,7 +261,9 @@ impl Trackable for TrackedFeatures {
             s_ttl_sum: 0.0,
             d_ttl_sum: 0.0,
             proto: f64::NAN,
+            #[cfg(not(feature = "timing"))]
             s_mac: pnet::datalink::MacAddr::zero(),
+            #[cfg(not(feature = "timing"))]
             d_mac: pnet::datalink::MacAddr::zero(),
         }
     }
