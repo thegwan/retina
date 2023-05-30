@@ -158,21 +158,41 @@ impl TrackedFeatures {
         self.cnt += 1;
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
-        
+
         #[cfg(feature = "timing")]
         let curr_ts = unsafe { rte_rdtsc() } as f64 / *TSC_GHZ;
         #[cfg(not(feature = "timing"))]
         let curr_ts = segment.mbuf_ref().timestamp() as f64 * 1e3;
 
-        #[cfg(any(not(feature = "timing"), feature = "proto", feature = "s_bytes_sum", feature = "d)bytes_sum", feature = "s_ttl_mean", features = "d_ttl_mean"))]
+        #[cfg(any(
+            not(feature = "timing"),
+            feature = "proto",
+            feature = "s_bytes_sum",
+            feature = "d_bytes_sum",
+            feature = "s_ttl_mean",
+            features = "d_ttl_mean"
+        ))]
         let mbuf = segment.mbuf_ref();
-        #[cfg(any(not(feature = "timing"), feature = "proto", feature = "s_bytes_sum", feature = "d_bytes_sum", feature = "s_ttl_mean", features = "d_ttl_mean"))]
+        #[cfg(any(
+            not(feature = "timing"),
+            feature = "proto",
+            feature = "s_bytes_sum",
+            feature = "d_bytes_sum",
+            feature = "s_ttl_mean",
+            features = "d_ttl_mean"
+        ))]
         let eth = mbuf.parse_to::<Ethernet>()?;
-        #[cfg(any(feature = "proto", feature = "s_bytes_sum", feature = "d_bytes_sum", feature = "s_ttl_mean", features = "d_ttl_mean"))]
+        #[cfg(any(
+            feature = "proto",
+            feature = "s_bytes_sum",
+            feature = "d_bytes_sum",
+            feature = "s_ttl_mean",
+            features = "d_ttl_mean"
+        ))]
         let ipv4 = eth.parse_to::<Ipv4>()?;
 
         if segment.dir {
-            #[cfg(not(feature = "timing"))] 
+            #[cfg(not(feature = "timing"))]
             if self.cnt == 1 {
                 self.s_mac = eth.src();
                 self.d_mac = eth.dst();
@@ -185,13 +205,21 @@ impl TrackedFeatures {
             }
 
             #[cfg(feature = "dur")]
-            { self.s_last_ts = curr_ts; }
+            {
+                self.s_last_ts = curr_ts;
+            }
             #[cfg(any(feature = "s_ttl_mean"))]
-            { self.s_pkt_cnt += 1.0; }
+            {
+                self.s_pkt_cnt += 1.0;
+            }
             #[cfg(feature = "s_bytes_sum")]
-            { self.s_bytes_sum += ipv4.total_length() as f64; }
+            {
+                self.s_bytes_sum += ipv4.total_length() as f64;
+            }
             #[cfg(feature = "s_ttl_mean")]
-            { self.s_ttl_sum += ipv4.time_to_live() as f64; }
+            {
+                self.s_ttl_sum += ipv4.time_to_live() as f64;
+            }
             // if !self.syn_ack_ts.is_nan() && self.ack_ts.is_nan() {
             //     let tcp = ipv4.parse_to::<Tcp>()?;
             //     if tcp.ack() {
@@ -200,22 +228,32 @@ impl TrackedFeatures {
             // }
         } else {
             #[cfg(feature = "dur")]
-            { self.d_last_ts = curr_ts; }
+            {
+                self.d_last_ts = curr_ts;
+            }
             #[cfg(any(feature = "d_ttl_mean"))]
-            { self.d_pkt_cnt += 1.0; }
-            #[cfg(feature = "d_bytes_sum")] 
-            { self.d_bytes_sum += ipv4.total_length() as f64; }
+            {
+                self.d_pkt_cnt += 1.0;
+            }
+            #[cfg(feature = "d_bytes_sum")]
+            {
+                self.d_bytes_sum += ipv4.total_length() as f64;
+            }
             #[cfg(any(feature = "d_ttl_mean"))]
-            { self.d_ttl_sum += ipv4.time_to_live() as f64; }
-        //     if self.syn_ack_ts.is_nan() && self.ack_ts.is_nan() {
-        //         let tcp = ipv4.parse_to::<Tcp>()?;
-        //         if tcp.synack() {
-        //             self.syn_ack_ts = curr_ts;
-        //         }
-        //     }
+            {
+                self.d_ttl_sum += ipv4.time_to_live() as f64;
+            }
+            //     if self.syn_ack_ts.is_nan() && self.ack_ts.is_nan() {
+            //         let tcp = ipv4.parse_to::<Tcp>()?;
+            //         if tcp.synack() {
+            //             self.syn_ack_ts = curr_ts;
+            //         }
+            //     }
         }
         #[cfg(feature = "proto")]
-        { self.proto = ipv4.protocol() as f64; }
+        {
+            self.proto = ipv4.protocol() as f64;
+        }
         #[cfg(feature = "timing")]
         {
             let end_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
@@ -352,4 +390,3 @@ impl Trackable for TrackedFeatures {
         false
     }
 }
-
