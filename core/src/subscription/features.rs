@@ -52,8 +52,10 @@ pub struct Features {
     s_bytes_mean: f64,
     #[cfg(feature = "d_bytes_mean")]
     d_bytes_mean: f64,
-    // s_iat_mean: f64,
-    // d_iat_mean: f64,
+    #[cfg(feature = "s_iat_mean")]
+    s_iat_mean: f64,
+    #[cfg(feature = "d_iat_mean")]
+    d_iat_mean: f64,
     // tcp_rtt: f64,
     // syn_ack: f64,
     // ack_dat: f64,
@@ -134,25 +136,31 @@ pub struct TrackedFeatures {
         feature = "dur", 
         feature = "s_load",
         feature = "d_load",
+        feature = "s_iat_mean",
     ))]
     syn_ts: f64,
-    // syn_ack_ts: f64,
+    #[cfg(any(
+        feature = "d_iat_mean",
+    ))]
+    syn_ack_ts: f64,
     // ack_ts: f64,
     #[cfg(any(
             feature = "dur", 
             feature = "s_load",
             feature = "d_load",
+            feature = "s_iat_mean",
         ))]
     s_last_ts: f64,
     #[cfg(any(
             feature = "dur", 
             feature = "s_load",
             feature = "d_load",
+            feature = "d_iat_mean",
         ))]
     d_last_ts: f64,
-    #[cfg(any(feature = "s_ttl_mean", feature = "s_pkt_cnt", feature = "s_bytes_mean"))]
+    #[cfg(any(feature = "s_ttl_mean", feature = "s_pkt_cnt", feature = "s_bytes_mean", feature = "s_iat_mean",))]
     s_pkt_cnt: f64,
-    #[cfg(any(feature = "d_ttl_mean", feature = "d_pkt_cnt", feature = "d_bytes_mean"))]
+    #[cfg(any(feature = "d_ttl_mean", feature = "d_pkt_cnt", feature = "d_bytes_mean", feature = "d_iat_mean"))]
     d_pkt_cnt: f64,
     #[cfg(any(feature = "s_bytes_sum", feature = "s_load", feature = "s_bytes_mean"))]
     s_bytes_sum: f64,
@@ -193,6 +201,8 @@ impl TrackedFeatures {
             feature = "d_load",
             feature = "s_bytes_mean",
             feature = "d_bytes_mean",
+            feature = "s_iat_mean",
+            feature = "d_iat_mean",
         ))]
         let mbuf = segment.mbuf_ref();
         #[cfg(any(
@@ -206,6 +216,8 @@ impl TrackedFeatures {
             feature = "d_load",
             feature = "s_bytes_mean",
             feature = "d_bytes_mean",
+            feature = "s_iat_mean",
+            feature = "d_iat_mean",
         ))]
         let eth = mbuf.parse_to::<Ethernet>()?;
         #[cfg(any(
@@ -218,6 +230,8 @@ impl TrackedFeatures {
             feature = "d_load",
             feature = "s_bytes_mean",
             feature = "d_bytes_mean",
+            feature = "s_iat_mean",
+            feature = "d_iat_mean",
         ))]
         let ipv4 = eth.parse_to::<Ipv4>()?;
 
@@ -232,21 +246,25 @@ impl TrackedFeatures {
                 feature = "dur", 
                 feature = "s_load",
                 feature = "d_load",
+                feature = "s_iat_mean"
             ))]
             if self.syn_ts.is_nan() {
-                // first packet is SYN
-                self.syn_ts = curr_ts;
+                let tcp = ipv4.parse_to::<Tcp>()?;
+                if tcp.syn() {
+                    self.syn_ts = curr_ts;
+                }
             }
 
             #[cfg(any(
                 feature = "dur", 
                 feature = "s_load",
                 feature = "d_load",
+                feature = "s_iat_mean",
             ))]
             {
                 self.s_last_ts = curr_ts;
             }
-            #[cfg(any(feature = "s_ttl_mean", feature = "s_pkt_cnt", feature = "s_bytes_mean"))]
+            #[cfg(any(feature = "s_ttl_mean", feature = "s_pkt_cnt", feature = "s_bytes_mean", feature = "s_iat_mean",))]
             {
                 self.s_pkt_cnt += 1.0;
             }
@@ -273,11 +291,12 @@ impl TrackedFeatures {
                 feature = "dur", 
                 feature = "s_load",
                 feature = "d_load",
+                feature = "d_iat_mean",
             ))]
             {
                 self.d_last_ts = curr_ts;
             }
-            #[cfg(any(feature = "d_ttl_mean", feature = "d_pkt_cnt", feature = "d_bytes_mean"))]
+            #[cfg(any(feature = "d_ttl_mean", feature = "d_pkt_cnt", feature = "d_bytes_mean", feature = "d_iat_mean"))]
             {
                 self.d_pkt_cnt += 1.0;
             }
@@ -289,12 +308,15 @@ impl TrackedFeatures {
             {
                 self.d_ttl_sum += ipv4.time_to_live() as f64;
             }
-            //     if self.syn_ack_ts.is_nan() && self.ack_ts.is_nan() {
-            //         let tcp = ipv4.parse_to::<Tcp>()?;
-            //         if tcp.synack() {
-            //             self.syn_ack_ts = curr_ts;
-            //         }
-            //     }
+            #[cfg(any(
+                feature = "d_iat_mean",
+            ))]
+            if self.syn_ack_ts.is_nan() {
+                let tcp = ipv4.parse_to::<Tcp>()?;
+                if tcp.synack() {
+                    self.syn_ack_ts = curr_ts;
+                }
+            }
         }
         #[cfg(feature = "proto")]
         {
@@ -335,8 +357,10 @@ impl TrackedFeatures {
         let s_bytes_mean = self.s_bytes_sum / self.s_pkt_cnt;
         #[cfg(any(feature = "d_bytes_mean"))]
         let d_bytes_mean = self.d_bytes_sum / self.d_pkt_cnt;
-        // let s_iat_mean = (self.s_last_ts - self.syn_ts) / self.s_pkt_cnt;
-        // let d_iat_mean = (self.d_last_ts - self.syn_ack_ts) / self.d_pkt_cnt;
+        #[cfg(feature = "s_iat_mean")]
+        let s_iat_mean = (self.s_last_ts - self.syn_ts) / self.s_pkt_cnt;
+        #[cfg(feature = "d_iat_mean")]
+        let d_iat_mean = (self.d_last_ts - self.syn_ack_ts) / self.d_pkt_cnt;
         // let syn_ack = self.syn_ack_ts - self.syn_ts;
         // let ack_dat = self.ack_ts - self.syn_ack_ts;
         // let tcp_rtt = syn_ack + ack_dat;
@@ -365,8 +389,10 @@ impl TrackedFeatures {
             s_bytes_mean,
             #[cfg(feature = "d_bytes_mean")]
             d_bytes_mean,
-            // s_iat_mean,
-            // d_iat_mean,
+            #[cfg(feature = "s_iat_mean")]
+            s_iat_mean,
+            #[cfg(feature = "d_iat_mean")]
+            d_iat_mean,
             // tcp_rtt,
             // syn_ack,
             // ack_dat,
@@ -396,25 +422,29 @@ impl Trackable for TrackedFeatures {
                 feature = "dur", 
                 feature = "s_load",
                 feature = "d_load",
+                feature = "s_iat_mean",
             ))]
             syn_ts: f64::NAN,
-            // syn_ack_ts: f64::NAN,
+            #[cfg(any(feature = "d_iat_mean",))]
+            syn_ack_ts: f64::NAN,
             // ack_ts: f64::NAN,
             #[cfg(any(
             feature = "dur", 
             feature = "s_load",
             feature = "d_load",
+            feature = "s_iat_mean",
             ))]
             s_last_ts: f64::NAN,
             #[cfg(any(
             feature = "dur", 
             feature = "s_load",
             feature = "d_load",
+            feature = "d_iat_mean",
             ))]
             d_last_ts: f64::NAN,
-            #[cfg(any(feature = "s_ttl_mean", feature = "s_pkt_cnt", feature = "s_bytes_mean"))]
+            #[cfg(any(feature = "s_ttl_mean", feature = "s_pkt_cnt", feature = "s_bytes_mean", feature = "s_iat_mean",))]
             s_pkt_cnt: 0.0,
-            #[cfg(any(feature = "d_ttl_mean", feature = "d_pkt_cnt", feature = "d_bytes_mean"))]
+            #[cfg(any(feature = "d_ttl_mean", feature = "d_pkt_cnt", feature = "d_bytes_mean", feature = "d_iat_mean",))]
             d_pkt_cnt: 0.0,
             #[cfg(any(feature = "s_bytes_sum", feature = "s_load", feature = "s_bytes_mean"))]
             s_bytes_sum: 0.0,
