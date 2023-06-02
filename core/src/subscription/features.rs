@@ -211,6 +211,7 @@ impl TrackedFeatures {
 
         #[cfg(any(
             not(feature = "timing"),
+            feature = "dur",
             feature = "proto",
             feature = "s_bytes_sum",
             feature = "d_bytes_sum",
@@ -229,6 +230,7 @@ impl TrackedFeatures {
         let mbuf = segment.mbuf_ref();
         #[cfg(any(
             not(feature = "timing"),
+            feature = "dur",
             feature = "proto",
             feature = "s_bytes_sum",
             feature = "d_bytes_sum",
@@ -246,6 +248,7 @@ impl TrackedFeatures {
         ))]
         let eth = mbuf.parse_to::<Ethernet>()?;
         #[cfg(any(
+            feature = "dur",
             feature = "proto",
             feature = "s_bytes_sum",
             feature = "d_bytes_sum",
