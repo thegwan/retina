@@ -169,9 +169,8 @@ def main(args):
         'dur',
         's_bytes_sum',
         's_bytes_mean',
-        'd_ttl_mean',
+        's_pkt_cnt',
         's_load',
-        'd_pkt_cnt',
     ]
 
     pkt_depths = ['all',10,5,3,2,1]
