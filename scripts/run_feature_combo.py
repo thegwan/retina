@@ -46,18 +46,15 @@ def modify_pkt_depth(subscription_module, pkt_depth):
                     print(f"{file_path}: no changes")
 
 
-# def modify_binary(template_file, feature):
-#     old_text = 'use retina_core::subscription::features::Features;'
-#     new_text = f'use retina_core::subscription::features_{feature}::Features;'
-#     with open(template_file, 'r', encoding='utf-8') as file:
-#         filedata = file.read()
-#     if old_text in filedata:
-#         print(GREEN + f'> Replacing `{old_text}` with `{new_text}`' + RESET)
-#         filedata = filedata.replace(old_text, new_text)
-#         with open('/home/gerryw/retina/examples/extract_features/src/main.rs', 'w', encoding='utf-8') as file:
-#             file.write(filedata)
-#         return True
-#     return False
+def apply_binary_template(template_file):
+    old_text = 'use retina_core::subscription::features::Features;'
+    with open(template_file, 'r', encoding='utf-8') as file:
+        filedata = file.read()
+    if old_text in filedata:
+        with open('/home/gerryw/retina/examples/extract_features/src/main.rs', 'w', encoding='utf-8') as file:
+            file.write(filedata)
+        return True
+    return False
 
 def modify_config(template_file, directory, feature):
     old_text = 'outfile = "./compute_features.csv"'
@@ -171,14 +168,13 @@ def main(args):
     ft_names = [
         'dur',
         's_bytes_sum',
-        'd_bytes_sum',
-        's_ttl_mean',
+        's_bytes_mean',
         'd_ttl_mean',
         's_load',
-        'd_load',
+        'd_pkt_cnt',
     ]
 
-    pkt_depths = [1,2,3,4,5,6,7,8,9,10,'all']
+    pkt_depths = ['all',10,5,3,2,1]
 
     errors = {}
     
@@ -205,6 +201,10 @@ def main(args):
                 config_file = '/home/gerryw/retina/scripts/base_online_config.toml'
             else:
                 config_file = '/home/gerryw/retina/scripts/base_offline_config.toml'
+
+            if not apply_binary_template('/home/gerryw/retina/scripts/base_extract_features.rs'):
+                print(f'Failed to apply binary template, skipping...')
+                errors[(pkt_depth, feature_comma)] = 'apply_binary_template'
             
             if not modify_config(config_file, directory, feature_hash):
                 print(f'Failed to modify config template for `{feature_comma} ({feature_hash})`, skipping...')
