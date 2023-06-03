@@ -221,11 +221,14 @@ impl TrackedFeatures {
         if segment.dir {
             #[cfg(not(feature = "timing"))]
             if self.cnt == 1 {
+                let mbuf = segment.mbuf_ref();
+                let eth = mbuf.parse_to::<Ethernet>()?;
                 self.s_mac = eth.src();
                 self.d_mac = eth.dst();
             }
 
             #[cfg(any(
+                feature = "dur",
                 feature = "s_load",
                 feature = "d_load",
                 feature = "s_iat_mean",

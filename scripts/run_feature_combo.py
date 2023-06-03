@@ -150,33 +150,34 @@ def get_feature_subsets(ft_names, r=None):
     return subsets
 
 def main(args):
-    ft_names = [
-        'dur',
-        'proto',
-        's_bytes_sum',
-        'd_bytes_sum',
-        's_ttl_mean',
-        'd_ttl_mean',
-        's_load',
-        'd_load',
-        's_bytes_mean',
-        'd_bytes_mean',
-        's_pkt_cnt',
-        'd_pkt_cnt',
-        's_iat_mean',
-        'd_iat_mean',
-        'tcp_rtt',
-        'syn_ack',
-        'ack_dat',
-    ]
-
     # ft_names = [
     #     'dur',
+    #     'proto',
     #     's_bytes_sum',
-    #     's_bytes_mean',
-    #     's_pkt_cnt',
+    #     'd_bytes_sum',
+    #     's_ttl_mean',
+    #     'd_ttl_mean',
     #     's_load',
+    #     'd_load',
+    #     's_bytes_mean',
+    #     'd_bytes_mean',
+    #     's_pkt_cnt',
+    #     'd_pkt_cnt',
+    #     's_iat_mean',
+    #     'd_iat_mean',
+    #     'tcp_rtt',
+    #     'syn_ack',
+    #     'ack_dat',
     # ]
+
+    ft_names = [
+        'dur',
+        's_bytes_sum',
+        's_bytes_mean',
+        's_pkt_cnt',
+        's_load',
+        's_iat_mean',
+    ]
 
     pkt_depths = ['all',10000,1000,100,10,9,8,7,6,5,4,3,2,1]
 
@@ -190,12 +191,12 @@ def main(args):
         os.makedirs(directory, exist_ok=True)
         print(YELLOW + directory + RESET)
 
-        subsets = get_feature_subsets(ft_names, 1)
+        subsets = get_feature_subsets(ft_names, None)
 
-        # add ALL
-        subsets.append(sorted(ft_names))
+        # # add ALL
+        # subsets.append(sorted(ft_names))
         pprint(subsets)
-        print(GREEN + BOLD + f'# feature sets: {len(subsets)} + RESET')
+        print(GREEN + BOLD + f'# feature sets: {len(subsets)}' + RESET)
         for subset in subsets:
             feature_dash = '-'.join(subset)
             feature_comma = ','.join(subset)
