@@ -218,55 +218,6 @@ impl TrackedFeatures {
         #[cfg(not(feature = "timing"))]
         let curr_ts = segment.mbuf_ref().timestamp() as f64 * 1e3;
 
-        #[cfg(any(
-            feature = "proto",
-            feature = "s_bytes_sum",
-            feature = "d_bytes_sum",
-            feature = "s_ttl_mean",
-            feature = "d_ttl_mean",
-            feature = "s_load",
-            feature = "d_load",
-            feature = "s_bytes_mean",
-            feature = "d_bytes_mean",
-            feature = "d_iat_mean",
-            feature = "tcp_rtt",
-            feature = "syn_ack",
-            feature = "ack_dat",
-        ))]
-        let mbuf = segment.mbuf_ref();
-        #[cfg(any(
-            feature = "proto",
-            feature = "s_bytes_sum",
-            feature = "d_bytes_sum",
-            feature = "s_ttl_mean",
-            feature = "d_ttl_mean",
-            feature = "s_load",
-            feature = "d_load",
-            feature = "s_bytes_mean",
-            feature = "d_bytes_mean",
-            feature = "d_iat_mean",
-            feature = "tcp_rtt",
-            feature = "syn_ack",
-            feature = "ack_dat",
-        ))]
-        let eth = mbuf.parse_to::<Ethernet>()?;
-        #[cfg(any(
-            feature = "proto",
-            feature = "s_bytes_sum",
-            feature = "d_bytes_sum",
-            feature = "s_ttl_mean",
-            feature = "d_ttl_mean",
-            feature = "s_load",
-            feature = "d_load",
-            feature = "s_bytes_mean",
-            feature = "d_bytes_mean",
-            feature = "d_iat_mean",
-            feature = "tcp_rtt",
-            feature = "syn_ack",
-            feature = "ack_dat",
-        ))]
-        let ipv4 = eth.parse_to::<Ipv4>()?;
-
         if segment.dir {
             #[cfg(not(feature = "timing"))]
             if self.cnt == 1 {
@@ -303,6 +254,54 @@ impl TrackedFeatures {
             {
                 self.s_pkt_cnt += 1.0;
             }
+            #[cfg(any(
+                feature = "proto",
+                feature = "s_bytes_sum",
+                feature = "d_bytes_sum",
+                feature = "s_ttl_mean",
+                feature = "d_ttl_mean",
+                feature = "s_load",
+                feature = "d_load",
+                feature = "s_bytes_mean",
+                feature = "d_bytes_mean",
+                feature = "d_iat_mean",
+                feature = "tcp_rtt",
+                feature = "syn_ack",
+                feature = "ack_dat",
+            ))]
+            let mbuf = segment.mbuf_ref();
+            #[cfg(any(
+                feature = "proto",
+                feature = "s_bytes_sum",
+                feature = "d_bytes_sum",
+                feature = "s_ttl_mean",
+                feature = "d_ttl_mean",
+                feature = "s_load",
+                feature = "d_load",
+                feature = "s_bytes_mean",
+                feature = "d_bytes_mean",
+                feature = "d_iat_mean",
+                feature = "tcp_rtt",
+                feature = "syn_ack",
+                feature = "ack_dat",
+            ))]
+            let eth = mbuf.parse_to::<Ethernet>()?;
+            #[cfg(any(
+                feature = "proto",
+                feature = "s_bytes_sum",
+                feature = "d_bytes_sum",
+                feature = "s_ttl_mean",
+                feature = "d_ttl_mean",
+                feature = "s_load",
+                feature = "d_load",
+                feature = "s_bytes_mean",
+                feature = "d_bytes_mean",
+                feature = "d_iat_mean",
+                feature = "tcp_rtt",
+                feature = "syn_ack",
+                feature = "ack_dat",
+            ))]
+            let ipv4 = eth.parse_to::<Ipv4>()?;
             #[cfg(any(feature = "s_bytes_sum", feature = "s_load", feature = "s_bytes_mean"))]
             {
                 self.s_bytes_sum += ipv4.total_length() as f64;
@@ -317,6 +316,10 @@ impl TrackedFeatures {
                 if tcp.ack() {
                     self.ack_ts = curr_ts;
                 }
+            }
+            #[cfg(feature = "proto")]
+            {
+                self.proto = ipv4.protocol() as f64;
             }
         } else {
             #[cfg(any(
@@ -337,6 +340,54 @@ impl TrackedFeatures {
             {
                 self.d_pkt_cnt += 1.0;
             }
+            #[cfg(any(
+                feature = "proto",
+                feature = "s_bytes_sum",
+                feature = "d_bytes_sum",
+                feature = "s_ttl_mean",
+                feature = "d_ttl_mean",
+                feature = "s_load",
+                feature = "d_load",
+                feature = "s_bytes_mean",
+                feature = "d_bytes_mean",
+                feature = "d_iat_mean",
+                feature = "tcp_rtt",
+                feature = "syn_ack",
+                feature = "ack_dat",
+            ))]
+            let mbuf = segment.mbuf_ref();
+            #[cfg(any(
+                feature = "proto",
+                feature = "s_bytes_sum",
+                feature = "d_bytes_sum",
+                feature = "s_ttl_mean",
+                feature = "d_ttl_mean",
+                feature = "s_load",
+                feature = "d_load",
+                feature = "s_bytes_mean",
+                feature = "d_bytes_mean",
+                feature = "d_iat_mean",
+                feature = "tcp_rtt",
+                feature = "syn_ack",
+                feature = "ack_dat",
+            ))]
+            let eth = mbuf.parse_to::<Ethernet>()?;
+            #[cfg(any(
+                feature = "proto",
+                feature = "s_bytes_sum",
+                feature = "d_bytes_sum",
+                feature = "s_ttl_mean",
+                feature = "d_ttl_mean",
+                feature = "s_load",
+                feature = "d_load",
+                feature = "s_bytes_mean",
+                feature = "d_bytes_mean",
+                feature = "d_iat_mean",
+                feature = "tcp_rtt",
+                feature = "syn_ack",
+                feature = "ack_dat",
+            ))]
+            let ipv4 = eth.parse_to::<Ipv4>()?;
             #[cfg(any(feature = "d_bytes_sum", feature = "d_load", feature = "d_bytes_mean"))]
             {
                 self.d_bytes_sum += ipv4.total_length() as f64;
@@ -357,10 +408,6 @@ impl TrackedFeatures {
                     self.syn_ack_ts = curr_ts;
                 }
             }
-        }
-        #[cfg(feature = "proto")]
-        {
-            self.proto = ipv4.protocol() as f64;
         }
         #[cfg(feature = "timing")]
         {
