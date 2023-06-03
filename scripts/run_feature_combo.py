@@ -7,6 +7,7 @@ import toml
 import argparse
 from pprint import pprint
 import hashlib
+import itertools
 
 # ANSI color codes
 BLACK = '\033[30m'
@@ -46,11 +47,15 @@ def modify_pkt_depth(subscription_module, pkt_depth):
                     print(f"{file_path}: no changes")
 
 
-def apply_binary_template(template_file):
+def modify_binary(template_file):
+    # does nothing
     old_text = 'use retina_core::subscription::features::Features;'
+    new_text = f'use retina_core::subscription::features::Features;'
     with open(template_file, 'r', encoding='utf-8') as file:
         filedata = file.read()
     if old_text in filedata:
+        print(GREEN + f'> Replacing `{old_text}` with `{new_text}`' + RESET)
+        filedata = filedata.replace(old_text, new_text)
         with open('/home/gerryw/retina/examples/extract_features/src/main.rs', 'w', encoding='utf-8') as file:
             file.write(filedata)
         return True
@@ -131,7 +136,9 @@ def profile_memory(directory, feature):
     popen = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, universal_newlines=True)
     return popen
 
-def get_feature_subsets(ft_names):
+def get_feature_subsets(ft_names, r=None):
+    if r:
+        return list(itertools.combinations(ft_names, r))
     subsets = []
     n = len(ft_names)
     for i in range(1, 2**n):
@@ -139,41 +146,39 @@ def get_feature_subsets(ft_names):
         for j in range(n):
             if i & (1 << j):
                 subset.append(ft_names[j])
-        subset.sort()
-        subsets.append(subset)
+        subsets.append(sorted(subset))
     return subsets
 
 def main(args):
-    # ft_names = [
-    #     'all',
-    #     'dur',
-    #     'proto',
-    #     's_bytes_sum',
-    #     'd_bytes_sum',
-    #     's_ttl_mean',
-    #     'd_ttl_mean',
-    #     's_load',
-    #     'd_load',
-    #     's_bytes_mean',
-    #     'd_bytes_mean',
-    #     's_pkt_cnt',
-    #     'd_pkt_cnt',
-    #     's_iat_mean',
-    #     'd_iat_mean',
-    #     'tcp_rtt',
-    #     'syn_ack',
-    #     'ack_dat',
-    # ]
-
     ft_names = [
         'dur',
+        'proto',
         's_bytes_sum',
-        's_bytes_mean',
-        's_pkt_cnt',
+        'd_bytes_sum',
+        's_ttl_mean',
+        'd_ttl_mean',
         's_load',
+        'd_load',
+        's_bytes_mean',
+        'd_bytes_mean',
+        's_pkt_cnt',
+        'd_pkt_cnt',
+        's_iat_mean',
+        'd_iat_mean',
+        'tcp_rtt',
+        'syn_ack',
+        'ack_dat',
     ]
 
-    pkt_depths = ['all',10,5,3,2,1]
+    # ft_names = [
+    #     'dur',
+    #     's_bytes_sum',
+    #     's_bytes_mean',
+    #     's_pkt_cnt',
+    #     's_load',
+    # ]
+
+    pkt_depths = ['all',10000,1000,100,10,9,8,7,6,5,4,3,2,1]
 
     errors = {}
     
@@ -183,9 +188,14 @@ def main(args):
         modify_pkt_depth('/home/gerryw/retina/core/src/subscription/', pkt_depth)
         directory = f'{args.directory}/pkts_{pkt_depth}'
         os.makedirs(directory, exist_ok=True)
-        print(YELLOW +BOLD + directory + RESET)
+        print(YELLOW + directory + RESET)
 
-        subsets = get_feature_subsets(ft_names)
+        subsets = get_feature_subsets(ft_names, 1)
+
+        # add ALL
+        subsets.append(sorted(ft_names))
+        pprint(subsets)
+        print(GREEN + BOLD + f'# feature sets: {len(subsets)} + RESET')
         for subset in subsets:
             feature_dash = '-'.join(subset)
             feature_comma = ','.join(subset)
@@ -201,8 +211,8 @@ def main(args):
             else:
                 config_file = '/home/gerryw/retina/scripts/base_offline_config.toml'
 
-            if not apply_binary_template('/home/gerryw/retina/scripts/base_extract_features.rs'):
-                print(f'Failed to apply binary template, skipping...')
+            if not modify_binary('/home/gerryw/retina/scripts/base_extract_features.rs'):
+                print(f'Failed to modify binary template, skipping...')
                 errors[(pkt_depth, feature_comma)] = 'apply_binary_template'
             
             if not modify_config(config_file, directory, feature_hash):
