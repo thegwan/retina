@@ -204,14 +204,21 @@ impl TrackedFeatures {
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
 
-        #[cfg(feature = "timing")]
+        #[cfg(any(
+            feature = "dur",
+            feature = "s_load",
+            feature = "d_load",
+            feature = "s_iat_mean",
+            feature = "d_iat_mean",
+            feature = "tcp_rtt",
+            feature = "syn_ack",
+            feature = "ack_dat",
+        ))]
         let curr_ts = unsafe { rte_rdtsc() } as f64 / *TSC_GHZ;
         #[cfg(not(feature = "timing"))]
         let curr_ts = segment.mbuf_ref().timestamp() as f64 * 1e3;
 
         #[cfg(any(
-            not(feature = "timing"),
-            feature = "dur",
             feature = "proto",
             feature = "s_bytes_sum",
             feature = "d_bytes_sum",
@@ -221,7 +228,6 @@ impl TrackedFeatures {
             feature = "d_load",
             feature = "s_bytes_mean",
             feature = "d_bytes_mean",
-            feature = "s_iat_mean",
             feature = "d_iat_mean",
             feature = "tcp_rtt",
             feature = "syn_ack",
@@ -229,8 +235,6 @@ impl TrackedFeatures {
         ))]
         let mbuf = segment.mbuf_ref();
         #[cfg(any(
-            not(feature = "timing"),
-            feature = "dur",
             feature = "proto",
             feature = "s_bytes_sum",
             feature = "d_bytes_sum",
@@ -240,7 +244,6 @@ impl TrackedFeatures {
             feature = "d_load",
             feature = "s_bytes_mean",
             feature = "d_bytes_mean",
-            feature = "s_iat_mean",
             feature = "d_iat_mean",
             feature = "tcp_rtt",
             feature = "syn_ack",
@@ -248,7 +251,6 @@ impl TrackedFeatures {
         ))]
         let eth = mbuf.parse_to::<Ethernet>()?;
         #[cfg(any(
-            feature = "dur",
             feature = "proto",
             feature = "s_bytes_sum",
             feature = "d_bytes_sum",
@@ -258,7 +260,6 @@ impl TrackedFeatures {
             feature = "d_load",
             feature = "s_bytes_mean",
             feature = "d_bytes_mean",
-            feature = "s_iat_mean",
             feature = "d_iat_mean",
             feature = "tcp_rtt",
             feature = "syn_ack",
@@ -274,7 +275,6 @@ impl TrackedFeatures {
             }
 
             #[cfg(any(
-                feature = "dur",
                 feature = "s_load",
                 feature = "d_load",
                 feature = "s_iat_mean",
@@ -282,10 +282,7 @@ impl TrackedFeatures {
                 feature = "syn_ack",
             ))]
             if self.syn_ts.is_nan() {
-                let tcp = ipv4.parse_to::<Tcp>()?;
-                if tcp.syn() {
-                    self.syn_ts = curr_ts;
-                }
+                self.syn_ts = curr_ts;
             }
 
             #[cfg(any(
