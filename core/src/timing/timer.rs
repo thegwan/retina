@@ -43,9 +43,25 @@ impl Timers {
         //     timers.insert(name.to_string(), timer);
         // }
         let mut timers = IndexMap::new();
-        init(&mut timers, "update");
         init(&mut timers, "extract_features");
-        init(&mut timers, "compute_ns");
+        init(&mut timers, "get_curr_ts");
+        init(&mut timers, "get_mbuf");
+        init(&mut timers, "parse_eth");
+        init(&mut timers, "parse_ipv4");
+        init(&mut timers, "update_syn_ts");
+        init(&mut timers, "update_s_last_ts");
+        init(&mut timers, "update_s_pkt_cnt");
+        init(&mut timers, "update_s_bytes_sum");
+        init(&mut timers, "update_s_ttl_sum");
+        init(&mut timers, "update_ack_ts");
+        init(&mut timers, "update_proto");
+        init(&mut timers, "update_d_last_ts");
+        init(&mut timers, "update_d_pkt_cnt");
+        init(&mut timers, "update_d_bytes_sum");
+        init(&mut timers, "update_d_ttl_sum");
+        init(&mut timers, "update_syn_ack_ts");
+        
+
         Timers {
             timers,
             outfile: config.outfile,

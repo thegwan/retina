@@ -48,6 +48,7 @@ fn main() -> Result<()> {
     println!("Done. Extract features from {:?} connections", cnt);
     Ok(())
 }
+
 #[derive(Debug, Serialize)]
 struct Output {
     config: RuntimeConfig,
