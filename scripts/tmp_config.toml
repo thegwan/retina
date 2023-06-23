@@ -25,4 +25,4 @@ nb_memory_channels = 6
     tcp_establish_timeout = 5000
 
 [timing]
-    outfile = "/mnt/netml/results/test/pkts_all/compute_timings.csv"
+    outfile = "/mnt/netml/results/test/pkts_all/compute_features_5b96cc91133e4a6cfcfaf2bc1263635f4eb5a014.csv"

@@ -393,9 +393,9 @@ impl TrackedFeatures {
         #[cfg(any(feature = "d_bytes_mean"))]
         let d_bytes_mean = self.d_bytes_sum / self.d_pkt_cnt;
         #[cfg(feature = "s_iat_mean")]
-        let s_iat_mean = (self.s_last_ts - self.syn_ts) / (self.s_pkt_cnt - 1);
+        let s_iat_mean = (self.s_last_ts - self.syn_ts) / (self.s_pkt_cnt - 1.0);
         #[cfg(feature = "d_iat_mean")]
-        let d_iat_mean = (self.d_last_ts - self.syn_ack_ts) / (self.d_pkt_cnt - 1);
+        let d_iat_mean = (self.d_last_ts - self.syn_ack_ts) / (self.d_pkt_cnt - 1.0);
         #[cfg(any(feature = "syn_ack", feature = "tcp_rtt"))]
         let syn_ack = self.syn_ack_ts - self.syn_ts;
         #[cfg(any(feature = "ack_dat", feature = "tcp_rtt"))]

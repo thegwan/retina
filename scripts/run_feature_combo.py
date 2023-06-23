@@ -8,6 +8,7 @@ import argparse
 from pprint import pprint
 import hashlib
 import itertools
+import numpy as np
 
 # ANSI color codes
 BLACK = '\033[30m'
@@ -136,18 +137,22 @@ def profile_memory(directory, feature):
     popen = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, universal_newlines=True)
     return popen
 
-def get_feature_subsets(ft_names, r=None):
-    if r:
-        return list(itertools.combinations(ft_names, r))
-    subsets = []
-    n = len(ft_names)
-    for i in range(1, 2**n):
-        subset = []
-        for j in range(n):
-            if i & (1 << j):
-                subset.append(ft_names[j])
-        subsets.append(sorted(subset))
-    return subsets
+# get list of binary vectors for all feature sets
+def get_all_points(features):
+    size = len(features)
+    binary_vector = [0,1]
+    combos = list(itertools.product(binary_vector, repeat=size))
+    return combos
+
+# get list of all feature sets, returns alphabetically sorted list
+def get_all_feature_sets(features):
+    points = get_all_points(features)
+    feature_sets = []
+    for x in points:
+        nonzero_idx = np.nonzero(x)[0].tolist()
+        feature_set = [features[i] for i in nonzero_idx]
+        feature_sets.append(sorted(feature_set))
+    return feature_sets
 
 def main(args):
     # ft_names = [
@@ -177,35 +182,37 @@ def main(args):
         's_pkt_cnt',
         's_load',
         's_iat_mean',
+        'tcp_rtt',
     ]
 
-    pkt_depths = ['all',10000,1000,100,10,9,8,7,6,5,4,3,2,1]
+    pkt_depths = ['all',10,9,8,7,6,5,4,3,2,1]
 
     errors = {}
     
     
     for pkt_depth in pkt_depths:
-        print(YELLOW +BOLD + str(pkt_depth) + RESET)
+        print(YELLOW + BOLD + str(pkt_depth) + RESET)
         modify_pkt_depth('/home/gerryw/retina/core/src/subscription/', pkt_depth)
         directory = f'{args.directory}/pkts_{pkt_depth}'
         os.makedirs(directory, exist_ok=True)
         print(YELLOW + directory + RESET)
 
-        subsets = get_feature_subsets(ft_names, None)
-
-        # # add ALL
-        # subsets.append(sorted(ft_names))
-        pprint(subsets)
-        print(GREEN + BOLD + f'# feature sets: {len(subsets)}' + RESET)
-        for subset in subsets:
-            feature_dash = '-'.join(subset)
-            feature_comma = ','.join(subset)
+        feature_sets = get_all_feature_sets(ft_names)
+        print(GREEN + BOLD + f'# feature sets: {len(feature_sets)}' + RESET)
+        for feature_set in feature_sets:
+            feature_set = sorted(feature_set)
+            feature_dash = '-'.join(feature_set)
+            feature_comma = ','.join(feature_set)
             print(CYAN +BOLD + feature_dash + RESET)
             sha1 = hashlib.sha1()
             sha1.update(feature_dash.encode('utf-8'))
             feature_hash = sha1.hexdigest()
             print(CYAN + feature_hash + RESET)
-        
+
+            compute_features_file = f'{directory}/compute_features_{feature_hash}.csv'
+            if os.path.exists(compute_features_file):
+                print(MAGENTA + BOLD + f'{feature_comma}_{pkt_depth} already exists, skipping...' + RESET)
+                continue
             
             if args.online:
                 config_file = '/home/gerryw/retina/scripts/base_online_config.toml'
