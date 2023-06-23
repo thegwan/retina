@@ -1,5 +1,5 @@
 """
-Usage: python3 scripts/run_feature_collect.py -d /mnt/netml/datasets/test
+Usage: python3 scripts/run_feature_collect.py -d /mnt/netml/datasets/test --release
 """
 
 import subprocess, re, os
@@ -46,12 +46,14 @@ def modify_pkt_depth(subscription_module, pkt_depth):
 
 
 
-def compile_binary(release):
+def compile_binary(feature_comma, release):
+    compile_features = feature_comma
     status = True
     if release:
-        cmd = f'cargo build --release --bin log_features'
+        cmd = f'cargo build --release --bin log_features --features {compile_features}'
     else:
-        cmd = f'cargo build --bin log_features'
+        cmd = f'cargo build --bin log_features --features {compile_features}'
+    print(CYAN + cmd + RESET)
     popen = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     for stderr_line in iter(popen.stderr.readline, ''):
         # print(stderr_line, end='')
@@ -111,6 +113,26 @@ def run_binary(directory, release):
 
 def main(args):
 
+    ft_names = [
+        'dur',
+        'proto',
+        's_bytes_sum',
+        'd_bytes_sum',
+        's_ttl_mean',
+        'd_ttl_mean',
+        's_load',
+        'd_load',
+        's_bytes_mean',
+        'd_bytes_mean',
+        's_pkt_cnt',
+        'd_pkt_cnt',
+        's_iat_mean',
+        'd_iat_mean',
+        'tcp_rtt',
+        'syn_ack',
+        'ack_dat',
+    ]
+
     pkt_depths = [1,2,3,4,5,6,7,8,9,10,20,50,100,1000,10000,'all']
 
     errors = {}
@@ -130,7 +152,8 @@ def main(args):
             print(f'Failed to modify config template for `{pkt_depth}`, skipping...')
             errors[pkt_depth] = 'modify_config'
         
-        if not compile_binary(release=args.release):
+        feature_comma = ','.join(sorted(ft_names))
+        if not compile_binary(feature_comma, release=args.release):
             print(f'Failed to compile for `{pkt_depth}`, skipping...')
             errors[pkt_depth] = 'compile'
             continue
