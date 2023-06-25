@@ -1,5 +1,5 @@
 """
-Usage: python3 scripts/run_feature_combo.py -d /mnt/netml/results/test
+Usage: python3 scripts/run_feature_combo.py -d /mnt/netml/results/test --release
 """
 
 import subprocess, re, os
@@ -183,9 +183,10 @@ def main(args):
         's_load',
         's_iat_mean',
         'tcp_rtt',
+        'proto',
     ]
 
-    pkt_depths = ['all',10,9,8,7,6,5,4,3,2,1]
+    pkt_depths = [10,9,8,7,6,5,4,3,2,1]
 
     errors = {}
     
