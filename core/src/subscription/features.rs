@@ -383,7 +383,7 @@ impl TrackedFeatures {
         #[cfg(any(feature = "s_ttl_mean"))]
         let s_ttl_mean = self.s_ttl_sum / self.s_pkt_cnt;
         #[cfg(any(feature = "d_ttl_mean"))]
-        let d_ttl_mean = self.d_ttl_sum - self.d_pkt_cnt;
+        let d_ttl_mean = self.d_ttl_sum / self.d_pkt_cnt;
         #[cfg(any(feature = "s_load",))]
         let s_load = self.s_bytes_sum * 8e9 / dur;
         #[cfg(any(feature = "d_load",))]
