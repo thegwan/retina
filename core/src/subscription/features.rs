@@ -10,7 +10,7 @@ use crate::protocols::packet::ethernet::Ethernet;
 use crate::protocols::packet::ipv4::Ipv4;
 use crate::protocols::packet::tcp::Tcp;
 use crate::protocols::packet::Packet;
-use crate::protocols::stream::{ConnParser, Session};
+use crate::protocols::stream::{ConnParser, Session, SessionData};
 use crate::subscription::*;
 
 use std::fmt;
@@ -68,6 +68,7 @@ pub struct Features {
     #[serde(serialize_with = "serialize_mac_addr")]
     #[cfg(not(feature = "timing"))]
     d_mac: pnet::datalink::MacAddr,
+    sni: String,
 }
 
 impl Features {}
@@ -134,6 +135,7 @@ impl Subscribable for Features {
 pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
+    sni: String,
     cnt: u64,
     #[cfg(any(
         feature = "dur",
@@ -441,6 +443,7 @@ impl TrackedFeatures {
             s_mac: self.s_mac,
             #[cfg(not(feature = "timing"))]
             d_mac: self.d_mac,
+            sni: self.sni.clone(),
         };
         #[cfg(feature = "timing")]
         {
@@ -458,6 +461,7 @@ impl Trackable for TrackedFeatures {
         TrackedFeatures {
             #[cfg(feature = "timing")]
             compute_ns: 0,
+            sni: "".to_string(),
             cnt: 0,
             #[cfg(any(
                 feature = "dur",
@@ -533,7 +537,11 @@ impl Trackable for TrackedFeatures {
         timer_elapsed_nanos!(subscription.timers, "update", t);
     }
 
-    fn on_match(&mut self, _session: Session, _subscription: &Subscription<Self::Subscribed>) {}
+    fn on_match(&mut self, session: Session, _subscription: &Subscription<Self::Subscribed>) {
+        if let SessionData::Tls(tls) = session.data {
+            self.sni = tls.sni().to_string();
+        }
+    }
 
     fn post_match(&mut self, pdu: L4Pdu, subscription: &Subscription<Self::Subscribed>) {
         timer_start!(t);
