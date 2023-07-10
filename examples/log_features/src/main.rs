@@ -28,8 +28,9 @@ struct Args {
 }
 
 //#[filter("ipv4 and tcp and tls and (tls.sni ~ 'zoom\\.us' or tls.sni ~ 'nflxvideo\\.net' or tls.sni ~ 'ttvnw\\.net' or tls.sni ~ 'meet\\.google\\.com' or tls.sni ~ 'facebook\\.com' or tls.sni ~ 'fbcdn\\.net' or tls.sni ~ 'twitter\\.com' or tls.sni ~ 'twimg\\.com')")]
-#[filter("ipv4 and tcp and tls and (tls.sni ~ 'zoom\\.us' or tls.sni ~ 'nflxvideo\\.net' or tls.sni ~ 'ttvnw\\.net' or tls.sni ~ 'meet\\.google\\.com')")]
+// #[filter("ipv4 and tcp and tls and (tls.sni ~ 'zoom\\.us' or tls.sni ~ 'nflxvideo\\.net' or tls.sni ~ 'ttvnw\\.net' or tls.sni ~ 'meet\\.google\\.com')")]
 //#[filter("ipv4 and tcp and tls and (tls.sni ~ 'meet\\.google\\.com')")]
+#[filter("ipv4 and tcp and tls")]
 fn main() -> Result<()> {
     env_logger::init();
     let args = Args::parse();

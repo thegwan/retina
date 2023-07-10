@@ -62,6 +62,9 @@ pub struct Features {
     syn_ack: f64,
     #[cfg(feature = "ack_dat")]
     ack_dat: f64,
+    #[cfg(feature = "s_bytes_min")]
+    s_bytes_min: f64,
+
     #[serde(serialize_with = "serialize_mac_addr")]
     #[cfg(not(feature = "timing"))]
     s_mac: pnet::datalink::MacAddr,
@@ -80,24 +83,6 @@ where
     serializer.serialize_str(&mac.to_string())
 }
 
-// impl Serialize for Features {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         S: Serializer,
-//     {
-//         let mut state = serializer.serialize_struct("Features", 1)?;
-//         state.serialize_field("fts", &self)?;
-//         state.end()
-//     }
-// }
-
-// impl fmt::Display for Features {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         write!(f, "{:?}", self.features,)?;
-//         Ok(())
-//     }
-// }
-
 impl Subscribable for Features {
     type Tracked = TrackedFeatures;
 
@@ -105,7 +90,6 @@ impl Subscribable for Features {
         Level::Connection
     }
 
-    // TODO: return a vector of all known parsers.
     fn parsers() -> Vec<ConnParser> {
         vec![]
     }
@@ -193,6 +177,8 @@ pub struct TrackedFeatures {
     d_ttl_sum: f64,
     #[cfg(feature = "proto")]
     proto: f64,
+    #[cfg(feature = "s_bytes_min")]
+    s_bytes_min: f64,
     #[cfg(not(feature = "timing"))]
     s_mac: pnet::datalink::MacAddr,
     #[cfg(not(feature = "timing"))]
@@ -234,6 +220,7 @@ impl TrackedFeatures {
             feature = "tcp_rtt",
             feature = "syn_ack",
             feature = "ack_dat",
+            feature = "s_bytes_min",
         ))]
         let mbuf = segment.mbuf_ref();
         #[cfg(any(
@@ -250,6 +237,7 @@ impl TrackedFeatures {
             feature = "tcp_rtt",
             feature = "syn_ack",
             feature = "ack_dat",
+            feature = "s_bytes_min",
         ))]
         let eth = mbuf.parse_to::<Ethernet>()?;
         #[cfg(any(
@@ -266,6 +254,7 @@ impl TrackedFeatures {
             feature = "tcp_rtt",
             feature = "syn_ack",
             feature = "ack_dat",
+            feature = "s_bytes_min",
         ))]
         let ipv4 = eth.parse_to::<Ipv4>()?;
 
@@ -311,6 +300,10 @@ impl TrackedFeatures {
             #[cfg(any(feature = "s_bytes_sum", feature = "s_load", feature = "s_bytes_mean"))]
             {
                 self.s_bytes_sum += ipv4.total_length() as f64;
+            }
+            #[cfg(feature = "s_bytes_min")]
+            {
+                self.s_bytes_min = self.s_bytes_min.min(ipv4.total_length() as f64);
             }
             #[cfg(feature = "s_ttl_mean")]
             {
@@ -439,6 +432,8 @@ impl TrackedFeatures {
             syn_ack,
             #[cfg(feature = "ack_dat")]
             ack_dat,
+            #[cfg(feature = "s_bytes_min")]
+            s_bytes_min: self.s_bytes_min,
             #[cfg(not(feature = "timing"))]
             s_mac: self.s_mac,
             #[cfg(not(feature = "timing"))]
@@ -519,6 +514,8 @@ impl Trackable for TrackedFeatures {
             d_ttl_sum: 0.0,
             #[cfg(feature = "proto")]
             proto: f64::NAN,
+            #[cfg(feature = "s_bytes_min")]
+            s_bytes_min: f64::NAN,
             #[cfg(not(feature = "timing"))]
             s_mac: pnet::datalink::MacAddr::zero(),
             #[cfg(not(feature = "timing"))]
