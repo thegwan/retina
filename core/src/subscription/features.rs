@@ -64,7 +64,8 @@ pub struct Features {
     ack_dat: f64,
     #[cfg(feature = "s_bytes_min")]
     s_bytes_min: f64,
-
+    #[cfg(feature = "d_bytes_min")]
+    d_bytes_min: f64,
     #[serde(serialize_with = "serialize_mac_addr")]
     #[cfg(not(feature = "timing"))]
     s_mac: pnet::datalink::MacAddr,
@@ -179,6 +180,8 @@ pub struct TrackedFeatures {
     proto: f64,
     #[cfg(feature = "s_bytes_min")]
     s_bytes_min: f64,
+    #[cfg(feature = "d_bytes_min")]
+    d_bytes_min: f64,
     #[cfg(not(feature = "timing"))]
     s_mac: pnet::datalink::MacAddr,
     #[cfg(not(feature = "timing"))]
@@ -221,6 +224,7 @@ impl TrackedFeatures {
             feature = "syn_ack",
             feature = "ack_dat",
             feature = "s_bytes_min",
+            feature = "d_bytes_min",
         ))]
         let mbuf = segment.mbuf_ref();
         #[cfg(any(
@@ -238,6 +242,7 @@ impl TrackedFeatures {
             feature = "syn_ack",
             feature = "ack_dat",
             feature = "s_bytes_min",
+            feature = "d_bytes_min",
         ))]
         let eth = mbuf.parse_to::<Ethernet>()?;
         #[cfg(any(
@@ -255,6 +260,7 @@ impl TrackedFeatures {
             feature = "syn_ack",
             feature = "ack_dat",
             feature = "s_bytes_min",
+            feature = "d_bytes_min",
         ))]
         let ipv4 = eth.parse_to::<Ipv4>()?;
 
@@ -342,6 +348,10 @@ impl TrackedFeatures {
             #[cfg(any(feature = "d_bytes_sum", feature = "d_load", feature = "d_bytes_mean"))]
             {
                 self.d_bytes_sum += ipv4.total_length() as f64;
+            }
+            #[cfg(feature = "d_bytes_min")]
+            {
+                self.d_bytes_min = self.d_bytes_min.min(ipv4.total_length() as f64);
             }
             #[cfg(any(feature = "d_ttl_mean"))]
             {
@@ -434,6 +444,9 @@ impl TrackedFeatures {
             ack_dat,
             #[cfg(feature = "s_bytes_min")]
             s_bytes_min: self.s_bytes_min,
+            #[cfg(feature = "d_bytes_min")]
+            d_bytes_min: self.d_bytes_min,
+
             #[cfg(not(feature = "timing"))]
             s_mac: self.s_mac,
             #[cfg(not(feature = "timing"))]
@@ -516,6 +529,8 @@ impl Trackable for TrackedFeatures {
             proto: f64::NAN,
             #[cfg(feature = "s_bytes_min")]
             s_bytes_min: f64::NAN,
+            #[cfg(feature = "d_bytes_min")]
+            d_bytes_min: f64::NAN,
             #[cfg(not(feature = "timing"))]
             s_mac: pnet::datalink::MacAddr::zero(),
             #[cfg(not(feature = "timing"))]
