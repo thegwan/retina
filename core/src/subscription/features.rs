@@ -74,6 +74,10 @@ pub struct Features {
     s_bytes_med: f64,
     #[cfg(feature = "d_bytes_med")]
     d_bytes_med: f64,
+    #[cfg(feature = "s_bytes_std")]
+    s_bytes_std: f64,
+    #[cfg(feature = "d_bytes_std")]
+    d_bytes_std: f64,
 
     #[serde(serialize_with = "serialize_mac_addr")]
     #[cfg(not(feature = "timing"))]
@@ -195,10 +199,11 @@ pub struct TrackedFeatures {
     s_bytes_max: f64,
     #[cfg(feature = "d_bytes_max")]
     d_bytes_max: f64,
-    #[cfg(feature = "s_bytes_med")]
+    #[cfg(any(feature = "s_bytes_med", feature = "s_bytes_std"))]
     s_bytes_hist: Vec<f64>,
-    #[cfg(feature = "d_bytes_med")]
+    #[cfg(any(feature = "d_bytes_med", feature = "d_bytes_std"))]
     d_bytes_hist: Vec<f64>,
+
     #[cfg(not(feature = "timing"))]
     s_mac: pnet::datalink::MacAddr,
     #[cfg(not(feature = "timing"))]
@@ -246,6 +251,8 @@ impl TrackedFeatures {
             feature = "d_bytes_max",
             feature = "s_bytes_med",
             feature = "d_bytes_med",
+            feature = "s_bytes_std",
+            feature = "d_bytes_std",
         ))]
         let mbuf = segment.mbuf_ref();
         #[cfg(any(
@@ -268,6 +275,8 @@ impl TrackedFeatures {
             feature = "d_bytes_max",
             feature = "s_bytes_med",
             feature = "d_bytes_med",
+            feature = "s_bytes_std",
+            feature = "d_bytes_std",
         ))]
         let eth = mbuf.parse_to::<Ethernet>()?;
         #[cfg(any(
@@ -290,6 +299,8 @@ impl TrackedFeatures {
             feature = "d_bytes_max",
             feature = "s_bytes_med",
             feature = "d_bytes_med",
+            feature = "s_bytes_std",
+            feature = "d_bytes_std",
         ))]
         let ipv4 = eth.parse_to::<Ipv4>()?;
 
@@ -344,7 +355,7 @@ impl TrackedFeatures {
             {
                 self.s_bytes_max = self.s_bytes_max.max(ipv4.total_length() as f64);
             }
-            #[cfg(any(feature = "s_bytes_med"))]
+            #[cfg(any(feature = "s_bytes_med", feature = "s_bytes_std"))]
             {
                 self.s_bytes_hist.push(ipv4.total_length() as f64);
             }
@@ -394,7 +405,7 @@ impl TrackedFeatures {
             {
                 self.d_bytes_max = self.d_bytes_max.max(ipv4.total_length() as f64);
             }
-            #[cfg(any(feature = "d_bytes_med"))]
+            #[cfg(any(feature = "d_bytes_med", feature = "d_bytes_std"))]
             {
                 self.d_bytes_hist.push(ipv4.total_length() as f64);
             }
@@ -456,6 +467,10 @@ impl TrackedFeatures {
         let s_bytes_med = median(&mut self.s_bytes_hist);
         #[cfg(any(feature = "d_bytes_med"))]
         let d_bytes_med = median(&mut self.d_bytes_hist);
+        #[cfg(any(feature = "s_bytes_std"))]
+        let s_bytes_std = stddev(&mut self.s_bytes_hist);
+        #[cfg(any(feature = "d_bytes_std"))]
+        let d_bytes_std = stddev(&mut self.d_bytes_hist);
         let features = Features {
             #[cfg(feature = "dur")]
             dur,
@@ -503,6 +518,10 @@ impl TrackedFeatures {
             s_bytes_med,
             #[cfg(feature = "d_bytes_med")]
             d_bytes_med,
+            #[cfg(feature = "s_bytes_std")]
+            s_bytes_std,
+            #[cfg(feature = "d_bytes_std")]
+            d_bytes_std,
 
             #[cfg(not(feature = "timing"))]
             s_mac: self.s_mac,
@@ -592,9 +611,9 @@ impl Trackable for TrackedFeatures {
             s_bytes_max: f64::NAN,
             #[cfg(feature = "d_bytes_max")]
             d_bytes_max: f64::NAN,
-            #[cfg(any(feature = "s_bytes_med"))]
+            #[cfg(any(feature = "s_bytes_med", feature = "s_bytes_std"))]
             s_bytes_hist: vec![],
-            #[cfg(any(feature = "d_bytes_med"))]
+            #[cfg(any(feature = "d_bytes_med", feature = "d_bytes_std"))]
             d_bytes_hist: vec![],
 
             #[cfg(not(feature = "timing"))]
@@ -654,3 +673,16 @@ fn median(numbers: &mut [f64]) -> f64 {
         (numbers[mid-1] + numbers[mid]) / 2.0
     }
 }
+
+fn stddev(numbers: &mut [f64]) -> f64 {
+    if numbers.is_empty() {
+        return f64::NAN;
+    }
+    let mean = numbers.iter().sum::<f64>() / (numbers.len() as f64);
+    let squared_diff_sum = numbers
+        .iter()
+        .map(|&num| (num - mean).powi(2))
+        .sum::<f64>();
+    (squared_diff_sum / numbers.len() as f64).sqrt()
+}
+
