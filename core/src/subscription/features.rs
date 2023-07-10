@@ -78,6 +78,10 @@ pub struct Features {
     s_bytes_std: f64,
     #[cfg(feature = "d_bytes_std")]
     d_bytes_std: f64,
+    #[cfg(feature = "s_iat_sum")]
+    s_iat_sum: f64,
+    #[cfg(feature = "d_iat_sum")]
+    d_iat_sum: f64,
 
     #[serde(serialize_with = "serialize_mac_addr")]
     #[cfg(not(feature = "timing"))]
@@ -142,6 +146,7 @@ pub struct TrackedFeatures {
         feature = "s_iat_mean",
         feature = "tcp_rtt",
         feature = "syn_ack",
+        feature = "s_iat_sum",
     ))]
     syn_ts: f64,
     #[cfg(any(
@@ -149,6 +154,7 @@ pub struct TrackedFeatures {
         feature = "tcp_rtt",
         feature = "syn_ack",
         feature = "ack_dat",
+        feature = "d_iat_sum",
     ))]
     syn_ack_ts: f64,
     #[cfg(any(feature = "tcp_rtt", feature = "ack_dat",))]
@@ -158,6 +164,7 @@ pub struct TrackedFeatures {
         feature = "s_load",
         feature = "d_load",
         feature = "s_iat_mean",
+        feature = "s_iat_sum",
     ))]
     s_last_ts: f64,
     #[cfg(any(
@@ -165,6 +172,7 @@ pub struct TrackedFeatures {
         feature = "s_load",
         feature = "d_load",
         feature = "d_iat_mean",
+        feature = "d_iat_sum",
     ))]
     d_last_ts: f64,
     #[cfg(any(
@@ -226,6 +234,8 @@ impl TrackedFeatures {
             feature = "tcp_rtt",
             feature = "syn_ack",
             feature = "ack_dat",
+            feature = "s_iat_sum",
+            feature = "d_iat_sum",
         ))]
         let curr_ts = unsafe { rte_rdtsc() } as f64 / *TSC_GHZ;
         #[cfg(not(feature = "timing"))]
@@ -320,6 +330,7 @@ impl TrackedFeatures {
                 feature = "s_iat_mean",
                 feature = "tcp_rtt",
                 feature = "syn_ack",
+                feature = "s_iat_sum",
             ))]
             if self.syn_ts.is_nan() {
                 self.syn_ts = curr_ts;
@@ -330,6 +341,7 @@ impl TrackedFeatures {
                 feature = "s_load",
                 feature = "d_load",
                 feature = "s_iat_mean",
+                feature = "s_iat_sum",
             ))]
             {
                 self.s_last_ts = curr_ts;
@@ -380,6 +392,7 @@ impl TrackedFeatures {
                 feature = "s_load",
                 feature = "d_load",
                 feature = "d_iat_mean",
+                feature = "d_iat_sum",
             ))]
             {
                 self.d_last_ts = curr_ts;
@@ -418,6 +431,7 @@ impl TrackedFeatures {
                 feature = "tcp_rtt",
                 feature = "syn_ack",
                 feature = "ack_dat",
+                feature = "d_iat_sum",
             ))]
             if self.syn_ack_ts.is_nan() {
                 let tcp = ipv4.parse_to::<Tcp>()?;
@@ -471,6 +485,10 @@ impl TrackedFeatures {
         let s_bytes_std = stddev(&mut self.s_bytes_hist);
         #[cfg(any(feature = "d_bytes_std"))]
         let d_bytes_std = stddev(&mut self.d_bytes_hist);
+        #[cfg(feature = "s_iat_sum")]
+        let s_iat_sum = self.s_last_ts - self.syn_ts;
+        #[cfg(feature = "d_iat_sum")]
+        let d_iat_sum = self.d_last_ts - self.syn_ack_ts;
         let features = Features {
             #[cfg(feature = "dur")]
             dur,
@@ -522,6 +540,10 @@ impl TrackedFeatures {
             s_bytes_std,
             #[cfg(feature = "d_bytes_std")]
             d_bytes_std,
+            #[cfg(feature = "s_iat_sum")]
+            s_iat_sum,
+            #[cfg(feature = "d_iat_sum")]
+            d_iat_sum,
 
             #[cfg(not(feature = "timing"))]
             s_mac: self.s_mac,
@@ -554,13 +576,15 @@ impl Trackable for TrackedFeatures {
                 feature = "s_iat_mean",
                 feature = "tcp_rtt",
                 feature = "syn_ack",
+                feature = "s_iat_sum",
             ))]
             syn_ts: f64::NAN,
             #[cfg(any(
                 feature = "d_iat_mean",
                 feature = "tcp_rtt",
                 feature = "syn_ack",
-                feature = "ack_dat"
+                feature = "ack_dat",
+                feature = "d_iat_sum",
             ))]
             syn_ack_ts: f64::NAN,
             #[cfg(any(feature = "tcp_rtt", feature = "ack_dat"))]
@@ -570,6 +594,7 @@ impl Trackable for TrackedFeatures {
                 feature = "s_load",
                 feature = "d_load",
                 feature = "s_iat_mean",
+                feature = "s_iat_sum",
             ))]
             s_last_ts: f64::NAN,
             #[cfg(any(
@@ -577,6 +602,7 @@ impl Trackable for TrackedFeatures {
                 feature = "s_load",
                 feature = "d_load",
                 feature = "d_iat_mean",
+                feature = "d_iat_sum",
             ))]
             d_last_ts: f64::NAN,
             #[cfg(any(
