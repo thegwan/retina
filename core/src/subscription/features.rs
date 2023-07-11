@@ -98,6 +98,30 @@ pub struct Features {
     s_iat_std: f64,
     #[cfg(feature = "d_iat_std")]
     d_iat_std: f64,
+    #[cfg(feature = "s_winsize_sum")]
+    s_winsize_sum: f64,
+    #[cfg(feature = "d_winsize_sum")]
+    d_winsize_sum: f64,
+    #[cfg(feature = "s_winsize_mean")]
+    s_winsize_mean: f64,
+    #[cfg(feature = "d_winsize_mean")]
+    d_winsize_mean: f64,
+    #[cfg(feature = "s_winsize_min")]
+    s_winsize_min: f64,
+    #[cfg(feature = "d_winsize_min")]
+    d_winsize_min: f64,
+    #[cfg(feature = "s_winsize_max")]
+    s_winsize_max: f64,
+    #[cfg(feature = "d_winsize_max")]
+    d_winsize_max: f64,
+    #[cfg(feature = "s_winsize_med")]
+    s_winsize_med: f64,
+    #[cfg(feature = "d_winsize_med")]
+    d_winsize_med: f64,
+    #[cfg(feature = "s_winsize_std")]
+    s_winsize_std: f64,
+    #[cfg(feature = "d_winsize_std")]
+    d_winsize_std: f64,
 
     #[serde(serialize_with = "serialize_mac_addr")]
     #[cfg(not(feature = "timing"))]
@@ -204,13 +228,15 @@ pub struct TrackedFeatures {
         feature = "s_pkt_cnt",
         feature = "s_bytes_mean",
         feature = "s_iat_mean",
+        feature = "s_winsize_mean",
     ))]
     s_pkt_cnt: f64,
     #[cfg(any(
         feature = "d_ttl_mean",
         feature = "d_pkt_cnt",
         feature = "d_bytes_mean",
-        feature = "d_iat_mean"
+        feature = "d_iat_mean",
+        feature = "d_winsize_mean",
     ))]
     d_pkt_cnt: f64,
     #[cfg(any(feature = "s_bytes_sum", feature = "s_load", feature = "s_bytes_mean"))]
@@ -247,6 +273,23 @@ pub struct TrackedFeatures {
     s_iat_hist: Vec<f64>,
     #[cfg(any(feature = "d_iat_med", feature = "d_iat_std"))]
     d_iat_hist: Vec<f64>,
+
+    #[cfg(feature = "s_winsize_sum")]
+    s_winsize_sum: f64,
+    #[cfg(feature = "d_winsize_sum")]
+    d_winsize_sum: f64,
+    #[cfg(feature = "s_winsize_min")]
+    s_winsize_min: f64,
+    #[cfg(feature = "d_winsize_min")]
+    d_winsize_min: f64,
+    #[cfg(feature = "s_winsize_max")]
+    s_winsize_max: f64,
+    #[cfg(feature = "d_winsize_max")]
+    d_winsize_max: f64,
+    #[cfg(any(feature = "s_winsize_med", feature = "s_winsize_std"))]
+    s_winsize_hist: Vec<f64>,
+    #[cfg(any(feature = "d_winsize_med", feature = "d_winsize_std"))]
+    d_winsize_hist: Vec<f64>,
 
 
     #[cfg(not(feature = "timing"))]
@@ -308,6 +351,19 @@ impl TrackedFeatures {
             feature = "d_bytes_med",
             feature = "s_bytes_std",
             feature = "d_bytes_std",
+            feature = "s_winsize_mean",
+            feature = "d_winsize_mean",
+            feature = "s_winsize_sum",
+            feature = "d_winsize_sum",
+            feature = "s_winsize_min",
+            feature = "d_winsize_min",
+            feature = "s_winsize_max",
+            feature = "d_winsize_max",
+            feature = "s_winsize_med",
+            feature = "d_winsize_med",
+            feature = "s_winsize_std",
+            feature = "d_winsize_std",
+            
         ))]
         let mbuf = segment.mbuf_ref();
         #[cfg(any(
@@ -332,6 +388,18 @@ impl TrackedFeatures {
             feature = "d_bytes_med",
             feature = "s_bytes_std",
             feature = "d_bytes_std",
+            feature = "s_winsize_mean",
+            feature = "d_winsize_mean",
+            feature = "s_winsize_sum",
+            feature = "d_winsize_sum",
+            feature = "s_winsize_min",
+            feature = "d_winsize_min",
+            feature = "s_winsize_max",
+            feature = "d_winsize_max",
+            feature = "s_winsize_med",
+            feature = "d_winsize_med",
+            feature = "s_winsize_std",
+            feature = "d_winsize_std",
         ))]
         let eth = mbuf.parse_to::<Ethernet>()?;
         #[cfg(any(
@@ -356,6 +424,18 @@ impl TrackedFeatures {
             feature = "d_bytes_med",
             feature = "s_bytes_std",
             feature = "d_bytes_std",
+            feature = "s_winsize_mean",
+            feature = "d_winsize_mean",
+            feature = "s_winsize_sum",
+            feature = "d_winsize_sum",
+            feature = "s_winsize_min",
+            feature = "d_winsize_min",
+            feature = "s_winsize_max",
+            feature = "d_winsize_max",
+            feature = "s_winsize_med",
+            feature = "d_winsize_med",
+            feature = "s_winsize_std",
+            feature = "d_winsize_std",
         ))]
         let ipv4 = eth.parse_to::<Ipv4>()?;
 
@@ -415,6 +495,7 @@ impl TrackedFeatures {
                 feature = "s_pkt_cnt",
                 feature = "s_bytes_mean",
                 feature = "s_iat_mean",
+                feature = "s_winsize_mean",
             ))]
             {
                 self.s_pkt_cnt += 1.0;
@@ -444,6 +525,34 @@ impl TrackedFeatures {
                 let tcp = ipv4.parse_to::<Tcp>()?;
                 if tcp.ack() {
                     self.ack_ts = curr_ts;
+                }
+            }
+            #[cfg(any(
+                feature = "s_winsize_sum", 
+                feature = "s_winsize_mean", 
+                feature = "s_winsize_min",
+                feature = "s_winsize_max",
+                feature = "s_winsize_med",
+                feature = "s_winsize_std",
+            ))]
+            {
+                let tcp = ipv4.parse_to::<Tcp>()?;
+                let winsize = tcp.window() as f64;
+                #[cfg(any(feature = "s_winsize_sum", feature = "s_winsize_mean"))]
+                {
+                    self.s_winsize_sum += winsize;
+                }
+                #[cfg(feature = "s_winsize_min")]
+                {
+                    self.s_winsize_min = self.s_winsize_min.min(winsize);
+                }
+                #[cfg(feature = "s_winsize_max")]
+                {
+                    self.s_winsize_max = self.s_winsize_max.max(winsize);
+                }
+                #[cfg(any(feature = "s_winsize_med", feature = "s_winsize_std"))]
+                {
+                    self.s_winsize_hist.push(winsize);
                 }
             }
             #[cfg(feature = "proto")]
@@ -484,7 +593,8 @@ impl TrackedFeatures {
                 feature = "d_ttl_mean",
                 feature = "d_pkt_cnt",
                 feature = "d_bytes_mean",
-                feature = "d_iat_mean"
+                feature = "d_iat_mean",
+                feature = "d_winsize_mean",
             ))]
             {
                 self.d_pkt_cnt += 1.0;
@@ -520,6 +630,34 @@ impl TrackedFeatures {
                 let tcp = ipv4.parse_to::<Tcp>()?;
                 if tcp.synack() {
                     self.syn_ack_ts = curr_ts;
+                }
+            }
+            #[cfg(any(
+                feature = "d_winsize_sum", 
+                feature = "d_winsize_mean", 
+                feature = "d_winsize_min",
+                feature = "d_winsize_max",
+                feature = "d_winsize_med",
+                feature = "d_winsize_std",
+            ))]
+            {
+                let tcp = ipv4.parse_to::<Tcp>()?;
+                let winsize = tcp.window() as f64;
+                #[cfg(any(feature = "d_winsize_sum", feature = "d_winsize_mean"))]
+                {
+                    self.d_winsize_sum += winsize;
+                }
+                #[cfg(feature = "d_winsize_min")]
+                {
+                    self.d_winsize_min = self.d_winsize_min.min(winsize);
+                }
+                #[cfg(feature = "d_winsize_max")]
+                {
+                    self.d_winsize_max = self.d_winsize_max.max(winsize);
+                }
+                #[cfg(any(feature = "d_winsize_med", feature = "d_winsize_std"))]
+                {
+                    self.d_winsize_hist.push(winsize);
                 }
             }
         }
@@ -580,6 +718,19 @@ impl TrackedFeatures {
         let s_iat_std = stddev(&mut self.s_iat_hist);
         #[cfg(any(feature = "d_iat_std"))]
         let d_iat_std = stddev(&mut self.d_iat_hist);
+
+        #[cfg(any(feature = "s_winsize_mean"))]
+        let s_winsize_mean = self.s_winsize_sum / self.s_pkt_cnt;
+        #[cfg(any(feature = "d_winsize_mean"))]
+        let d_winsize_mean = self.d_winsize_sum / self.d_pkt_cnt;
+        #[cfg(any(feature = "s_winsize_med"))]
+        let s_winsize_med = median(&mut self.s_winsize_hist);
+        #[cfg(any(feature = "d_winsize_med"))]
+        let d_winsize_med = median(&mut self.d_winsize_hist);
+        #[cfg(any(feature = "s_winsize_std"))]
+        let s_winsize_std = stddev(&mut self.s_winsize_hist);
+        #[cfg(any(feature = "d_winsize_std"))]
+        let d_winsize_std = stddev(&mut self.d_winsize_hist);
         let features = Features {
             #[cfg(feature = "dur")]
             dur,
@@ -651,6 +802,31 @@ impl TrackedFeatures {
             s_iat_std,
             #[cfg(feature = "d_iat_std")]
             d_iat_std,
+            #[cfg(feature = "s_winsize_sum")]
+            s_winsize_sum: self.s_winsize_sum,
+            #[cfg(feature = "d_winsize_sum")]
+            d_winsize_sum: self.d_winsize_sum,
+            #[cfg(feature = "s_winsize_mean")]
+            s_winsize_mean,
+            #[cfg(feature = "d_winsize_mean")]
+            d_winsize_mean,
+            #[cfg(feature = "s_winsize_min")]
+            s_winsize_min: self.s_winsize_min,
+            #[cfg(feature = "d_winsize_min")]
+            d_winsize_min: self.d_winsize_min,
+            #[cfg(feature = "s_winsize_max")]
+            s_winsize_max: self.s_winsize_max,
+            #[cfg(feature = "d_winsize_max")]
+            d_winsize_max: self.d_winsize_max,
+            #[cfg(feature = "s_winsize_med")]
+            s_winsize_med,
+            #[cfg(feature = "d_winsize_med")]
+            d_winsize_med,
+            #[cfg(feature = "s_winsize_std")]
+            s_winsize_std,
+            #[cfg(feature = "d_winsize_std")]
+            d_winsize_std,
+
 
             #[cfg(not(feature = "timing"))]
             s_mac: self.s_mac,
@@ -725,6 +901,7 @@ impl Trackable for TrackedFeatures {
                 feature = "s_pkt_cnt",
                 feature = "s_bytes_mean",
                 feature = "s_iat_mean",
+                feature = "s_winsize_mean",
             ))]
             s_pkt_cnt: 0.0,
             #[cfg(any(
@@ -732,6 +909,7 @@ impl Trackable for TrackedFeatures {
                 feature = "d_pkt_cnt",
                 feature = "d_bytes_mean",
                 feature = "d_iat_mean",
+                feature = "d_winsize_mean",
             ))]
             d_pkt_cnt: 0.0,
             #[cfg(any(feature = "s_bytes_sum", feature = "s_load", feature = "s_bytes_mean"))]
@@ -768,6 +946,24 @@ impl Trackable for TrackedFeatures {
             s_iat_hist: vec![],
             #[cfg(any(feature = "d_iat_med", feature = "d_iat_std"))]
             d_iat_hist: vec![],
+            #[cfg(any(feature = "s_winsize_sum", feature = "s_winsize_mean"))]
+            s_winsize_sum: 0.0,
+            #[cfg(any(feature = "d_winsize_sum", feature = "d_winsize_mean"))]
+            d_winsize_sum: 0.0,
+            #[cfg(feature = "s_winsize_min")]
+            s_winsize_min: f64::NAN,
+            #[cfg(feature = "d_winsize_min")]
+            d_winsize_min: f64::NAN,
+            #[cfg(feature = "s_winsize_max")]
+            s_winsize_max: f64::NAN,
+            #[cfg(feature = "d_winsize_max")]
+            d_winsize_max: f64::NAN,
+            #[cfg(any(feature = "s_winsize_med", feature = "s_winsize_std"))]
+            s_winsize_hist: vec![],
+            #[cfg(any(feature = "d_winsize_med", feature = "d_winsize_std"))]
+            d_winsize_hist: vec![],
+
+            
 
             #[cfg(not(feature = "timing"))]
             s_mac: pnet::datalink::MacAddr::zero(),
