@@ -82,6 +82,14 @@ pub struct Features {
     s_iat_sum: f64,
     #[cfg(feature = "d_iat_sum")]
     d_iat_sum: f64,
+    #[cfg(feature = "s_iat_min")]
+    s_iat_min: f64,
+    #[cfg(feature = "d_iat_min")]
+    d_iat_min: f64,
+    #[cfg(feature = "s_iat_max")]
+    s_iat_max: f64,
+    #[cfg(feature = "d_iat_max")]
+    d_iat_max: f64,
 
     #[serde(serialize_with = "serialize_mac_addr")]
     #[cfg(not(feature = "timing"))]
@@ -165,6 +173,8 @@ pub struct TrackedFeatures {
         feature = "d_load",
         feature = "s_iat_mean",
         feature = "s_iat_sum",
+        feature = "s_iat_min",
+        feature = "s_iat_max",
     ))]
     s_last_ts: f64,
     #[cfg(any(
@@ -173,6 +183,8 @@ pub struct TrackedFeatures {
         feature = "d_load",
         feature = "d_iat_mean",
         feature = "d_iat_sum",
+        feature = "d_iat_min",
+        feature = "d_iat_max",
     ))]
     d_last_ts: f64,
     #[cfg(any(
@@ -211,6 +223,15 @@ pub struct TrackedFeatures {
     s_bytes_hist: Vec<f64>,
     #[cfg(any(feature = "d_bytes_med", feature = "d_bytes_std"))]
     d_bytes_hist: Vec<f64>,
+    #[cfg(feature = "s_iat_min")]
+    s_iat_min: f64,
+    #[cfg(feature = "d_iat_min")]
+    d_iat_min: f64,
+    #[cfg(feature = "s_iat_max")]
+    s_iat_max: f64,
+    #[cfg(feature = "d_iat_max")]
+    d_iat_max: f64,
+
 
     #[cfg(not(feature = "timing"))]
     s_mac: pnet::datalink::MacAddr,
@@ -236,6 +257,10 @@ impl TrackedFeatures {
             feature = "ack_dat",
             feature = "s_iat_sum",
             feature = "d_iat_sum",
+            feature = "s_iat_min",
+            feature = "d_iat_min",
+            feature = "s_iat_max",
+            feature = "d_iat_max",
         ))]
         let curr_ts = unsafe { rte_rdtsc() } as f64 / *TSC_GHZ;
         #[cfg(not(feature = "timing"))]
@@ -336,12 +361,22 @@ impl TrackedFeatures {
                 self.syn_ts = curr_ts;
             }
 
+            #[cfg(feature = "s_iat_min")]
+            {
+                self.s_iat_min = self.s_iat_min.min(curr_ts - self.s_last_ts);
+            }
+            #[cfg(feature = "s_iat_max")]
+            {
+                self.s_iat_max = self.s_iat_max.max(curr_ts - self.s_last_ts);
+            }
             #[cfg(any(
                 feature = "dur",
                 feature = "s_load",
                 feature = "d_load",
                 feature = "s_iat_mean",
                 feature = "s_iat_sum",
+                feature = "s_iat_min",
+                feature = "s_iat_max",
             ))]
             {
                 self.s_last_ts = curr_ts;
@@ -387,12 +422,22 @@ impl TrackedFeatures {
                 self.proto = ipv4.protocol() as f64;
             }
         } else {
+            #[cfg(feature = "d_iat_min")]
+            {
+                self.d_iat_min = self.d_iat_min.min(curr_ts - self.d_last_ts);
+            }
+            #[cfg(feature = "d_iat_max")]
+            {
+                self.d_iat_max = self.d_iat_max.max(curr_ts - self.d_last_ts);
+            }
             #[cfg(any(
                 feature = "dur",
                 feature = "s_load",
                 feature = "d_load",
                 feature = "d_iat_mean",
                 feature = "d_iat_sum",
+                feature = "d_iat_min",
+                feature = "d_iat_max",
             ))]
             {
                 self.d_last_ts = curr_ts;
@@ -544,6 +589,14 @@ impl TrackedFeatures {
             s_iat_sum,
             #[cfg(feature = "d_iat_sum")]
             d_iat_sum,
+            #[cfg(feature = "s_iat_min")]
+            s_iat_min: self.s_iat_min,
+            #[cfg(feature = "d_iat_min")]
+            d_iat_min: self.d_iat_min,
+            #[cfg(feature = "s_iat_max")]
+            s_iat_max: self.s_iat_max,
+            #[cfg(feature = "d_iat_max")]
+            d_iat_max: self.d_iat_max,
 
             #[cfg(not(feature = "timing"))]
             s_mac: self.s_mac,
@@ -595,6 +648,8 @@ impl Trackable for TrackedFeatures {
                 feature = "d_load",
                 feature = "s_iat_mean",
                 feature = "s_iat_sum",
+                feature = "s_iat_min",
+                feature = "s_iat_max",
             ))]
             s_last_ts: f64::NAN,
             #[cfg(any(
@@ -603,6 +658,8 @@ impl Trackable for TrackedFeatures {
                 feature = "d_load",
                 feature = "d_iat_mean",
                 feature = "d_iat_sum",
+                feature = "d_iat_min",
+                feature = "d_iat_max",
             ))]
             d_last_ts: f64::NAN,
             #[cfg(any(
@@ -641,6 +698,14 @@ impl Trackable for TrackedFeatures {
             s_bytes_hist: vec![],
             #[cfg(any(feature = "d_bytes_med", feature = "d_bytes_std"))]
             d_bytes_hist: vec![],
+            #[cfg(feature = "s_iat_min")]
+            s_iat_min: f64::NAN,
+            #[cfg(feature = "d_iat_min")]
+            d_iat_min: f64::NAN,
+            #[cfg(feature = "s_iat_max")]
+            s_iat_max: f64::NAN,
+            #[cfg(feature = "d_iat_max")]
+            d_iat_max: f64::NAN,
 
             #[cfg(not(feature = "timing"))]
             s_mac: pnet::datalink::MacAddr::zero(),
