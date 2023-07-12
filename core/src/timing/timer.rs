@@ -63,7 +63,6 @@ impl Timers {
         // init(&mut timers, "update_d_bytes_sum");
         // init(&mut timers, "update_d_ttl_sum");
         // init(&mut timers, "update_syn_ack_ts");
-        
 
         Timers {
             timers,

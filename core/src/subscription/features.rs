@@ -36,7 +36,7 @@ pub struct Features {
     s_port: f64,
     #[cfg(feature = "d_port")]
     d_port: f64,
-    
+
     #[cfg(feature = "s_load")]
     s_load: f64,
     #[cfg(feature = "d_load")]
@@ -62,7 +62,7 @@ pub struct Features {
     syn_cnt: f64,
     #[cfg(feature = "fin_cnt")]
     fin_cnt: f64,
-    
+
     #[cfg(feature = "tcp_rtt")]
     tcp_rtt: f64,
     #[cfg(feature = "syn_ack")]
@@ -169,7 +169,6 @@ pub struct Features {
     s_ttl_std: f64,
     #[cfg(feature = "d_ttl_std")]
     d_ttl_std: f64,
-    
 
     #[serde(serialize_with = "serialize_mac_addr")]
     #[cfg(not(feature = "timing"))]
@@ -289,7 +288,7 @@ pub struct TrackedFeatures {
         feature = "d_ttl_mean",
     ))]
     d_pkt_cnt: f64,
-    
+
     #[cfg(feature = "cwr_cnt")]
     cwr_cnt: f64,
     #[cfg(feature = "ece_cnt")]
@@ -377,7 +376,6 @@ pub struct TrackedFeatures {
     s_ttl_hist: Vec<f64>,
     #[cfg(any(feature = "d_ttl_med", feature = "d_ttl_std"))]
     d_ttl_hist: Vec<f64>,
-
 
     #[cfg(not(feature = "timing"))]
     s_mac: pnet::datalink::MacAddr,
@@ -616,7 +614,7 @@ impl TrackedFeatures {
                 self.s_iat_max = self.s_iat_max.max(curr_ts - self.s_last_ts);
             }
             #[cfg(any(feature = "s_iat_med", feature = "s_iat_std"))]
-            {   
+            {
                 let s_iat = curr_ts - self.s_last_ts;
                 if !s_iat.is_nan() {
                     self.s_iat_hist.push(curr_ts - self.s_last_ts);
@@ -687,8 +685,8 @@ impl TrackedFeatures {
                 }
             }
             #[cfg(any(
-                feature = "s_winsize_sum", 
-                feature = "s_winsize_mean", 
+                feature = "s_winsize_sum",
+                feature = "s_winsize_mean",
                 feature = "s_winsize_min",
                 feature = "s_winsize_max",
                 feature = "s_winsize_med",
@@ -707,8 +705,8 @@ impl TrackedFeatures {
             {
                 let tcp = ipv4.parse_to::<Tcp>()?;
                 #[cfg(any(
-                    feature = "s_winsize_sum", 
-                    feature = "s_winsize_mean", 
+                    feature = "s_winsize_sum",
+                    feature = "s_winsize_mean",
                     feature = "s_winsize_min",
                     feature = "s_winsize_max",
                     feature = "s_winsize_med",
@@ -790,7 +788,6 @@ impl TrackedFeatures {
                 {
                     self.d_port = tcp.dst_port() as f64;
                 }
-                
             }
             #[cfg(feature = "proto")]
             {
@@ -852,7 +849,7 @@ impl TrackedFeatures {
             {
                 self.d_bytes_hist.push(ipv4.total_length() as f64);
             }
-            
+
             #[cfg(any(feature = "d_ttl_sum", feature = "d_ttl_mean"))]
             {
                 self.d_ttl_sum += ipv4.time_to_live() as f64;
@@ -883,8 +880,8 @@ impl TrackedFeatures {
                 }
             }
             #[cfg(any(
-                feature = "d_winsize_sum", 
-                feature = "d_winsize_mean", 
+                feature = "d_winsize_sum",
+                feature = "d_winsize_mean",
                 feature = "d_winsize_min",
                 feature = "d_winsize_max",
                 feature = "d_winsize_med",
@@ -901,8 +898,8 @@ impl TrackedFeatures {
             {
                 let tcp = ipv4.parse_to::<Tcp>()?;
                 #[cfg(any(
-                    feature = "s_winsize_sum", 
-                    feature = "s_winsize_mean", 
+                    feature = "s_winsize_sum",
+                    feature = "s_winsize_mean",
                     feature = "s_winsize_min",
                     feature = "s_winsize_max",
                     feature = "s_winsize_med",
@@ -976,7 +973,6 @@ impl TrackedFeatures {
                         self.fin_cnt += 1.0;
                     }
                 }
-
             }
         }
         #[cfg(feature = "timing")]
@@ -998,7 +994,7 @@ impl TrackedFeatures {
         let s_load = self.s_bytes_sum * 8e9 / dur;
         #[cfg(any(feature = "d_load",))]
         let d_load = self.d_bytes_sum * 8e9 / dur;
-       
+
         #[cfg(any(feature = "syn_ack", feature = "tcp_rtt"))]
         let syn_ack = self.syn_ack_ts - self.syn_ts;
         #[cfg(any(feature = "ack_dat", feature = "tcp_rtt"))]
@@ -1071,7 +1067,7 @@ impl TrackedFeatures {
             s_port: self.s_port,
             #[cfg(feature = "d_port")]
             d_port: self.d_port,
-            
+
             #[cfg(feature = "s_load")]
             s_load,
             #[cfg(feature = "d_load")]
@@ -1080,7 +1076,7 @@ impl TrackedFeatures {
             s_pkt_cnt: self.s_pkt_cnt,
             #[cfg(feature = "d_pkt_cnt")]
             d_pkt_cnt: self.d_pkt_cnt,
-            
+
             #[cfg(feature = "tcp_rtt")]
             tcp_rtt,
             #[cfg(feature = "syn_ack")]
@@ -1432,7 +1428,7 @@ fn median(numbers: &mut [f64]) -> f64 {
     if numbers.len() % 2 == 1 {
         numbers[mid]
     } else {
-        (numbers[mid-1] + numbers[mid]) / 2.0
+        (numbers[mid - 1] + numbers[mid]) / 2.0
     }
 }
 
@@ -1441,10 +1437,6 @@ fn stddev(numbers: &mut [f64]) -> f64 {
         return f64::NAN;
     }
     let mean = numbers.iter().sum::<f64>() / (numbers.len() as f64);
-    let squared_diff_sum = numbers
-        .iter()
-        .map(|&num| (num - mean).powi(2))
-        .sum::<f64>();
+    let squared_diff_sum = numbers.iter().map(|&num| (num - mean).powi(2)).sum::<f64>();
     (squared_diff_sum / numbers.len() as f64).sqrt()
 }
-
