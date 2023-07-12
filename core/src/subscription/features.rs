@@ -32,6 +32,10 @@ pub struct Features {
     dur: f64,
     #[cfg(feature = "proto")]
     proto: f64,
+    #[cfg(feature = "s_port")]
+    s_port: f64,
+    #[cfg(feature = "d_port")]
+    d_port: f64,
     
     #[cfg(feature = "s_load")]
     s_load: f64,
@@ -41,6 +45,23 @@ pub struct Features {
     s_pkt_cnt: f64,
     #[cfg(feature = "d_pkt_cnt")]
     d_pkt_cnt: f64,
+
+    #[cfg(feature = "cwr_cnt")]
+    cwr_cnt: f64,
+    #[cfg(feature = "ece_cnt")]
+    ece_cnt: f64,
+    #[cfg(feature = "urg_cnt")]
+    urg_cnt: f64,
+    #[cfg(feature = "ack_cnt")]
+    ack_cnt: f64,
+    #[cfg(feature = "psh_cnt")]
+    psh_cnt: f64,
+    #[cfg(feature = "rst_cnt")]
+    rst_cnt: f64,
+    #[cfg(feature = "syn_cnt")]
+    syn_cnt: f64,
+    #[cfg(feature = "fin_cnt")]
+    fin_cnt: f64,
     
     #[cfg(feature = "tcp_rtt")]
     tcp_rtt: f64,
@@ -269,9 +290,29 @@ pub struct TrackedFeatures {
     ))]
     d_pkt_cnt: f64,
     
-    
+    #[cfg(feature = "cwr_cnt")]
+    cwr_cnt: f64,
+    #[cfg(feature = "ece_cnt")]
+    ece_cnt: f64,
+    #[cfg(feature = "urg_cnt")]
+    urg_cnt: f64,
+    #[cfg(feature = "ack_cnt")]
+    ack_cnt: f64,
+    #[cfg(feature = "psh_cnt")]
+    psh_cnt: f64,
+    #[cfg(feature = "rst_cnt")]
+    rst_cnt: f64,
+    #[cfg(feature = "syn_cnt")]
+    syn_cnt: f64,
+    #[cfg(feature = "fin_cnt")]
+    fin_cnt: f64,
+
     #[cfg(feature = "proto")]
     proto: f64,
+    #[cfg(feature = "s_port")]
+    s_port: f64,
+    #[cfg(feature = "d_port")]
+    d_port: f64,
 
     #[cfg(any(feature = "s_bytes_sum", feature = "s_bytes_mean", feature = "s_load"))]
     s_bytes_sum: f64,
@@ -377,8 +418,16 @@ impl TrackedFeatures {
 
         #[cfg(any(
             feature = "proto",
-            feature = "s_ttl_mean",
-            feature = "d_ttl_mean",
+            feature = "s_port",
+            feature = "d_port",
+            feature = "cwr_cnt",
+            feature = "ece_cnt",
+            feature = "urg_cnt",
+            feature = "ack_cnt",
+            feature = "psh_cnt",
+            feature = "rst_cnt",
+            feature = "syn_cnt",
+            feature = "fin_cnt",
             feature = "s_load",
             feature = "d_load",
             feature = "d_iat_mean",
@@ -425,9 +474,16 @@ impl TrackedFeatures {
         let mbuf = segment.mbuf_ref();
         #[cfg(any(
             feature = "proto",
-            
-            feature = "s_ttl_mean",
-            feature = "d_ttl_mean",
+            feature = "s_port",
+            feature = "d_port",
+            feature = "cwr_cnt",
+            feature = "ece_cnt",
+            feature = "urg_cnt",
+            feature = "ack_cnt",
+            feature = "psh_cnt",
+            feature = "rst_cnt",
+            feature = "syn_cnt",
+            feature = "fin_cnt",
             feature = "s_load",
             feature = "d_load",
             feature = "d_iat_mean",
@@ -474,8 +530,16 @@ impl TrackedFeatures {
         let eth = mbuf.parse_to::<Ethernet>()?;
         #[cfg(any(
             feature = "proto",
-            feature = "s_ttl_mean",
-            feature = "d_ttl_mean",
+            feature = "s_port",
+            feature = "d_port",
+            feature = "cwr_cnt",
+            feature = "ece_cnt",
+            feature = "urg_cnt",
+            feature = "ack_cnt",
+            feature = "psh_cnt",
+            feature = "rst_cnt",
+            feature = "syn_cnt",
+            feature = "fin_cnt",
             feature = "s_load",
             feature = "d_load",
             feature = "d_iat_mean",
@@ -629,26 +693,104 @@ impl TrackedFeatures {
                 feature = "s_winsize_max",
                 feature = "s_winsize_med",
                 feature = "s_winsize_std",
+                feature = "cwr_cnt",
+                feature = "ece_cnt",
+                feature = "urg_cnt",
+                feature = "ack_cnt",
+                feature = "psh_cnt",
+                feature = "rst_cnt",
+                feature = "syn_cnt",
+                feature = "fin_cnt",
+                feature = "s_port",
+                feature = "d_port",
             ))]
             {
                 let tcp = ipv4.parse_to::<Tcp>()?;
-                let winsize = tcp.window() as f64;
-                #[cfg(any(feature = "s_winsize_sum", feature = "s_winsize_mean"))]
+                #[cfg(any(
+                    feature = "s_winsize_sum", 
+                    feature = "s_winsize_mean", 
+                    feature = "s_winsize_min",
+                    feature = "s_winsize_max",
+                    feature = "s_winsize_med",
+                    feature = "s_winsize_std",
+                ))]
                 {
-                    self.s_winsize_sum += winsize;
+                    let winsize = tcp.window() as f64;
+                    #[cfg(any(feature = "s_winsize_sum", feature = "s_winsize_mean"))]
+                    {
+                        self.s_winsize_sum += winsize;
+                    }
+                    #[cfg(feature = "s_winsize_min")]
+                    {
+                        self.s_winsize_min = self.s_winsize_min.min(winsize);
+                    }
+                    #[cfg(feature = "s_winsize_max")]
+                    {
+                        self.s_winsize_max = self.s_winsize_max.max(winsize);
+                    }
+                    #[cfg(any(feature = "s_winsize_med", feature = "s_winsize_std"))]
+                    {
+                        self.s_winsize_hist.push(winsize);
+                    }
                 }
-                #[cfg(feature = "s_winsize_min")]
+
+                #[cfg(feature = "cwr_cnt")]
                 {
-                    self.s_winsize_min = self.s_winsize_min.min(winsize);
+                    if tcp.cwr() {
+                        self.cwr_cnt += 1.0;
+                    }
                 }
-                #[cfg(feature = "s_winsize_max")]
+                #[cfg(feature = "ece_cnt")]
                 {
-                    self.s_winsize_max = self.s_winsize_max.max(winsize);
+                    if tcp.ece() {
+                        self.ece_cnt += 1.0;
+                    }
                 }
-                #[cfg(any(feature = "s_winsize_med", feature = "s_winsize_std"))]
+                #[cfg(feature = "urg_cnt")]
                 {
-                    self.s_winsize_hist.push(winsize);
+                    if tcp.urg() {
+                        self.urg_cnt += 1.0;
+                    }
                 }
+                #[cfg(feature = "ack_cnt")]
+                {
+                    if tcp.ack() {
+                        self.ack_cnt += 1.0;
+                    }
+                }
+                #[cfg(feature = "psh_cnt")]
+                {
+                    if tcp.psh() {
+                        self.psh_cnt += 1.0;
+                    }
+                }
+                #[cfg(feature = "rst_cnt")]
+                {
+                    if tcp.rst() {
+                        self.rst_cnt += 1.0;
+                    }
+                }
+                #[cfg(feature = "syn_cnt")]
+                {
+                    if tcp.syn() {
+                        self.syn_cnt += 1.0;
+                    }
+                }
+                #[cfg(feature = "fin_cnt")]
+                {
+                    if tcp.fin() {
+                        self.fin_cnt += 1.0;
+                    }
+                }
+                #[cfg(feature = "s_port")]
+                {
+                    self.s_port = tcp.src_port() as f64;
+                }
+                #[cfg(feature = "d_port")]
+                {
+                    self.d_port = tcp.dst_port() as f64;
+                }
+                
             }
             #[cfg(feature = "proto")]
             {
@@ -747,26 +889,94 @@ impl TrackedFeatures {
                 feature = "d_winsize_max",
                 feature = "d_winsize_med",
                 feature = "d_winsize_std",
+                feature = "cwr_cnt",
+                feature = "ece_cnt",
+                feature = "urg_cnt",
+                feature = "ack_cnt",
+                feature = "psh_cnt",
+                feature = "rst_cnt",
+                feature = "syn_cnt",
+                feature = "fin_cnt",
             ))]
             {
                 let tcp = ipv4.parse_to::<Tcp>()?;
-                let winsize = tcp.window() as f64;
-                #[cfg(any(feature = "d_winsize_sum", feature = "d_winsize_mean"))]
+                #[cfg(any(
+                    feature = "s_winsize_sum", 
+                    feature = "s_winsize_mean", 
+                    feature = "s_winsize_min",
+                    feature = "s_winsize_max",
+                    feature = "s_winsize_med",
+                    feature = "s_winsize_std",
+                ))]
                 {
-                    self.d_winsize_sum += winsize;
+                    let winsize = tcp.window() as f64;
+                    #[cfg(any(feature = "d_winsize_sum", feature = "d_winsize_mean"))]
+                    {
+                        self.d_winsize_sum += winsize;
+                    }
+                    #[cfg(feature = "d_winsize_min")]
+                    {
+                        self.d_winsize_min = self.d_winsize_min.min(winsize);
+                    }
+                    #[cfg(feature = "d_winsize_max")]
+                    {
+                        self.d_winsize_max = self.d_winsize_max.max(winsize);
+                    }
+                    #[cfg(any(feature = "d_winsize_med", feature = "d_winsize_std"))]
+                    {
+                        self.d_winsize_hist.push(winsize);
+                    }
                 }
-                #[cfg(feature = "d_winsize_min")]
+
+                #[cfg(feature = "cwr_cnt")]
                 {
-                    self.d_winsize_min = self.d_winsize_min.min(winsize);
+                    if tcp.cwr() {
+                        self.cwr_cnt += 1.0;
+                    }
                 }
-                #[cfg(feature = "d_winsize_max")]
+                #[cfg(feature = "ece_cnt")]
                 {
-                    self.d_winsize_max = self.d_winsize_max.max(winsize);
+                    if tcp.ece() {
+                        self.ece_cnt += 1.0;
+                    }
                 }
-                #[cfg(any(feature = "d_winsize_med", feature = "d_winsize_std"))]
+                #[cfg(feature = "urg_cnt")]
                 {
-                    self.d_winsize_hist.push(winsize);
+                    if tcp.urg() {
+                        self.urg_cnt += 1.0;
+                    }
                 }
+                #[cfg(feature = "ack_cnt")]
+                {
+                    if tcp.ack() {
+                        self.ack_cnt += 1.0;
+                    }
+                }
+                #[cfg(feature = "psh_cnt")]
+                {
+                    if tcp.psh() {
+                        self.psh_cnt += 1.0;
+                    }
+                }
+                #[cfg(feature = "rst_cnt")]
+                {
+                    if tcp.rst() {
+                        self.rst_cnt += 1.0;
+                    }
+                }
+                #[cfg(feature = "syn_cnt")]
+                {
+                    if tcp.syn() {
+                        self.syn_cnt += 1.0;
+                    }
+                }
+                #[cfg(feature = "fin_cnt")]
+                {
+                    if tcp.fin() {
+                        self.fin_cnt += 1.0;
+                    }
+                }
+
             }
         }
         #[cfg(feature = "timing")]
@@ -857,6 +1067,10 @@ impl TrackedFeatures {
             dur,
             #[cfg(feature = "proto")]
             proto: self.proto,
+            #[cfg(feature = "s_port")]
+            s_port: self.s_port,
+            #[cfg(feature = "d_port")]
+            d_port: self.d_port,
             
             #[cfg(feature = "s_load")]
             s_load,
@@ -873,6 +1087,23 @@ impl TrackedFeatures {
             syn_ack,
             #[cfg(feature = "ack_dat")]
             ack_dat,
+
+            #[cfg(feature = "cwr_cnt")]
+            cwr_cnt: self.cwr_cnt,
+            #[cfg(feature = "ece_cnt")]
+            ece_cnt: self.ece_cnt,
+            #[cfg(feature = "urg_cnt")]
+            urg_cnt: self.urg_cnt,
+            #[cfg(feature = "ack_cnt")]
+            ack_cnt: self.ack_cnt,
+            #[cfg(feature = "psh_cnt")]
+            psh_cnt: self.psh_cnt,
+            #[cfg(feature = "rst_cnt")]
+            rst_cnt: self.rst_cnt,
+            #[cfg(feature = "syn_cnt")]
+            syn_cnt: self.syn_cnt,
+            #[cfg(feature = "fin_cnt")]
+            fin_cnt: self.fin_cnt,
 
             #[cfg(feature = "s_bytes_sum")]
             s_bytes_sum: self.s_bytes_sum,
@@ -1059,8 +1290,29 @@ impl Trackable for TrackedFeatures {
             ))]
             d_pkt_cnt: 0.0,
 
+            #[cfg(feature = "cwr_cnt")]
+            cwr_cnt: 0.0,
+            #[cfg(feature = "ece_cnt")]
+            ece_cnt: 0.0,
+            #[cfg(feature = "urg_cnt")]
+            urg_cnt: 0.0,
+            #[cfg(feature = "ack_cnt")]
+            ack_cnt: 0.0,
+            #[cfg(feature = "psh_cnt")]
+            psh_cnt: 0.0,
+            #[cfg(feature = "rst_cnt")]
+            rst_cnt: 0.0,
+            #[cfg(feature = "syn_cnt")]
+            syn_cnt: 0.0,
+            #[cfg(feature = "fin_cnt")]
+            fin_cnt: 0.0,
+
             #[cfg(feature = "proto")]
             proto: f64::NAN,
+            #[cfg(feature = "s_port")]
+            s_port: f64::NAN,
+            #[cfg(feature = "d_port")]
+            d_port: f64::NAN,
 
             #[cfg(any(feature = "s_bytes_sum", feature = "s_bytes_mean", feature = "s_load"))]
             s_bytes_sum: 0.0,
