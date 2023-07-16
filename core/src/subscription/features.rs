@@ -26,6 +26,7 @@ lazy_static! {
 }
 
 /// A features record.
+#[cfg(any(feature = "timing", feature = "label"))]
 #[derive(Debug, Serialize)]
 pub struct Features {
     #[cfg(feature = "dur")]
@@ -174,6 +175,12 @@ pub struct Features {
     sni: String,
     #[cfg(feature = "timing")]
     syn_ts: f64,
+}
+
+#[cfg(not(any(feature = "timing", feature = "label")))]
+#[derive(Debug, Serialize)]
+pub struct Features {
+    pub feature_vec: Vec<f64>,
 }
 
 impl Features {}
@@ -1047,6 +1054,7 @@ impl TrackedFeatures {
         #[cfg(any(feature = "d_ttl_std"))]
         let d_ttl_std = stddev(&mut self.d_ttl_hist);
 
+        #[cfg(any(feature = "timing", feature = "label"))]
         let features = Features {
             #[cfg(feature = "dur")]
             dur,
@@ -1195,6 +1203,154 @@ impl TrackedFeatures {
             #[cfg(feature = "timing")]
             syn_ts: self.syn_ts,
         };
+
+        #[cfg(not(any(feature = "timing", feature = "label")))]
+        let features = Features {
+            feature_vec: vec![
+                #[cfg(feature = "dur")]
+                dur,
+                #[cfg(feature = "proto")]
+                self.proto,
+                #[cfg(feature = "s_port")]
+                self.s_port,
+                #[cfg(feature = "d_port")]
+                self.d_port,
+
+                #[cfg(feature = "s_load")]
+                s_load,
+                #[cfg(feature = "d_load")]
+                d_load,
+                #[cfg(feature = "s_pkt_cnt")]
+                self.s_pkt_cnt,
+                #[cfg(feature = "d_pkt_cnt")]
+                self.d_pkt_cnt,
+
+                #[cfg(feature = "tcp_rtt")]
+                tcp_rtt,
+                #[cfg(feature = "syn_ack")]
+                syn_ack,
+                #[cfg(feature = "ack_dat")]
+                ack_dat,
+
+                #[cfg(feature = "cwr_cnt")]
+                self.cwr_cnt,
+                #[cfg(feature = "ece_cnt")]
+                self.ece_cnt,
+                #[cfg(feature = "urg_cnt")]
+                self.urg_cnt,
+                #[cfg(feature = "ack_cnt")]
+                self.ack_cnt,
+                #[cfg(feature = "psh_cnt")]
+                self.psh_cnt,
+                #[cfg(feature = "rst_cnt")]
+                self.rst_cnt,
+                #[cfg(feature = "syn_cnt")]
+                self.syn_cnt,
+                #[cfg(feature = "fin_cnt")]
+                self.fin_cnt,
+
+                #[cfg(feature = "s_bytes_sum")]
+                self.s_bytes_sum,
+                #[cfg(feature = "d_bytes_sum")]
+                self.d_bytes_sum,
+                #[cfg(feature = "s_bytes_mean")]
+                s_bytes_mean,
+                #[cfg(feature = "d_bytes_mean")]
+                d_bytes_mean,
+                #[cfg(feature = "s_bytes_min")]
+                self.s_bytes_min,
+                #[cfg(feature = "d_bytes_min")]
+                self.d_bytes_min,
+                #[cfg(feature = "s_bytes_max")]
+                self.s_bytes_max,
+                #[cfg(feature = "d_bytes_max")]
+                self.d_bytes_max,
+                #[cfg(feature = "s_bytes_med")]
+                s_bytes_med,
+                #[cfg(feature = "d_bytes_med")]
+                d_bytes_med,
+                #[cfg(feature = "s_bytes_std")]
+                s_bytes_std,
+                #[cfg(feature = "d_bytes_std")]
+                d_bytes_std,
+
+                #[cfg(feature = "s_iat_sum")]
+                s_iat_sum,
+                #[cfg(feature = "d_iat_sum")]
+                d_iat_sum,
+                #[cfg(feature = "s_iat_mean")]
+                s_iat_mean,
+                #[cfg(feature = "d_iat_mean")]
+                d_iat_mean,
+                #[cfg(feature = "s_iat_min")]
+                self.s_iat_min,
+                #[cfg(feature = "d_iat_min")]
+                self.d_iat_min,
+                #[cfg(feature = "s_iat_max")]
+                self.s_iat_max,
+                #[cfg(feature = "d_iat_max")]
+                self.d_iat_max,
+                #[cfg(feature = "s_iat_med")]
+                s_iat_med,
+                #[cfg(feature = "d_iat_med")]
+                d_iat_med,
+                #[cfg(feature = "s_iat_std")]
+                s_iat_std,
+                #[cfg(feature = "d_iat_std")]
+                d_iat_std,
+
+                #[cfg(feature = "s_winsize_sum")]
+                self.s_winsize_sum,
+                #[cfg(feature = "d_winsize_sum")]
+                self.d_winsize_sum,
+                #[cfg(feature = "s_winsize_mean")]
+                s_winsize_mean,
+                #[cfg(feature = "d_winsize_mean")]
+                d_winsize_mean,
+                #[cfg(feature = "s_winsize_min")]
+                self.s_winsize_min,
+                #[cfg(feature = "d_winsize_min")]
+                self.d_winsize_min,
+                #[cfg(feature = "s_winsize_max")]
+                self.s_winsize_max,
+                #[cfg(feature = "d_winsize_max")]
+                self.d_winsize_max,
+                #[cfg(feature = "s_winsize_med")]
+                s_winsize_med,
+                #[cfg(feature = "d_winsize_med")]
+                d_winsize_med,
+                #[cfg(feature = "s_winsize_std")]
+                s_winsize_std,
+                #[cfg(feature = "d_winsize_std")]
+                d_winsize_std,
+
+                #[cfg(feature = "s_ttl_sum")]
+                self.s_ttl_sum,
+                #[cfg(feature = "d_ttl_sum")]
+                self.d_ttl_sum,
+                #[cfg(feature = "s_ttl_mean")]
+                s_ttl_mean,
+                #[cfg(feature = "d_ttl_mean")]
+                d_ttl_mean,
+                #[cfg(feature = "s_ttl_min")]
+                self.s_ttl_min,
+                #[cfg(feature = "d_ttl_min")]
+                self.d_ttl_min,
+                #[cfg(feature = "s_ttl_max")]
+                self.s_ttl_max,
+                #[cfg(feature = "d_ttl_max")]
+                self.d_ttl_max,
+                #[cfg(feature = "s_ttl_med")]
+                s_ttl_med,
+                #[cfg(feature = "d_ttl_med")]
+                d_ttl_med,
+                #[cfg(feature = "s_ttl_std")]
+                s_ttl_std,
+                #[cfg(feature = "d_ttl_std")]
+                d_ttl_std,
+            ]
+        };
+
         #[cfg(feature = "timing")]
         {
             let end_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;

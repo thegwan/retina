@@ -1,3 +1,7 @@
+/// Build: cargo b --features d_ttl_mean,d_ttl_max,d_ttl_med,d_ttl_min,d_winsize_med,d_winsize_min,d_winsize_mean,d_winsize_sum,d_winsize_std,d_ttl_sum --bin serve_ml
+/// Run: sudo env LD_LIBRARY_PATH=$LD_LIBRARY_PATH RUST_LOG=info ./target/debug/serve_ml -c configs/offline.toml -m /mnt/netml/datasets/app_class/test/rust_dt.bin -o pred.json
+
+
 use retina_core::config::load_config;
 use retina_core::subscription::features::Features;
 use retina_core::Runtime;
@@ -36,14 +40,14 @@ fn main() -> Result<()> {
     let args = Args::parse();
     let config = load_config(&args.config);
 
-    let file = Mutex::new(BufWriter::new(File::create(&args.outfile)?));
+    // let file = Mutex::new(BufWriter::new(File::create(&args.outfile)?));
     let cnt = AtomicUsize::new(0);
     let clf = load_clf(&args.model_file)?;
 
-    let callback = |conn: Features| {
+    let callback = |features: Features| {
         //println!("{}", conn.sni);
-        let features = conn.features;
-        let instance = DenseMatrix::new(1, features.len(), features, false);
+        let feature_vec = features.feature_vec;
+        let instance = DenseMatrix::new(1, feature_vec.len(), feature_vec, false);
         //   let start = Instant::now();
         let pred = clf.predict(&instance).unwrap();
         //   println!("predict: {:?}", start.elapsed());
@@ -51,10 +55,10 @@ fn main() -> Result<()> {
 
         cnt.fetch_add(1, Ordering::Relaxed);
         // let res = serde_json::to_string(&(conn.sni, pred[0])).unwrap();
-        let res = serde_json::to_string(&pred[0]).unwrap();
-        let mut wtr = file.lock().unwrap();
-        wtr.write_all(res.as_bytes()).unwrap();
-        wtr.write_all(b"\n").unwrap();
+        // let res = serde_json::to_string(&pred[0]).unwrap();
+        // let mut wtr = file.lock().unwrap();
+        // wtr.write_all(res.as_bytes()).unwrap();
+        // wtr.write_all(b"\n").unwrap();
     };
     let mut runtime = Runtime::new(config, filter, callback)?;
     runtime.run();
