@@ -1,28 +1,39 @@
-# This configuration is an example to show Retina in "offline" mode, which
-# reads from a PCAP file.
-# 
-# See https://stanford-esrg.github.io/retina/retina_core/config/index.html
-# for configuration options.
-
 main_core = 0
 nb_memory_channels = 6
 
 [mempool]
-    capacity = 262_144
-    cache_size = 512
+capacity = 8388608
+cache_size = 512
 
-[offline]
-    pcap = "/mnt/netml/datasets/unsw_iot/pcaps"
-#    pcap = "./traces/small_flows.pcap"
-    mtu = 9702
+[online]
+duration = 60
+nb_rxd = 32768
+promiscuous = true
+mtu = 1500
+hardware_assist = false
+[[online.ports]]
+device = "0000:3b:00.0"
+cores = [ 1,]
+
+[online.ports.sink]
+core = 17
+nb_buckets = 1
 
 [conntrack]
-    max_connections = 10_000_000
-    max_out_of_order = 500
-    timeout_resolution = 100
-    udp_inactivity_timeout = 60_000
-    tcp_inactivity_timeout = 300_000
-    tcp_establish_timeout = 5000
+max_connections = 10000000
+max_out_of_order = 500
+timeout_resolution = 100
+udp_inactivity_timeout = 60000
+tcp_inactivity_timeout = 300000
+tcp_establish_timeout = 5000
 
 [timing]
-    outfile = "/mnt/netml/results/test/pkts_all/compute_features_5b96cc91133e4a6cfcfaf2bc1263635f4eb5a014.csv"
+outfile = "./compute_features.csv"
+
+[online.monitor.display]
+throughput = true
+mempool_usage = true
+
+[online.monitor.log]
+directory = "/mnt/netml/throughput/app_class/pkts_all/features_147573952589676412927/buckets1_2023-07-16-15-38-51"
+interval = 1000
