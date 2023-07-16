@@ -34,7 +34,7 @@ struct Args {
     outfile: PathBuf,
 }
 
-#[filter("ipv4 and tcp and tls")]
+#[filter("ipv4 and tcp")]
 fn main() -> Result<()> {
     env_logger::init();
     let args = Args::parse();
