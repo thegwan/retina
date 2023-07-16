@@ -3,6 +3,7 @@
 
 
 use retina_core::config::load_config;
+use retina_core::config::RuntimeConfig;
 use retina_core::subscription::features::Features;
 use retina_core::Runtime;
 use retina_filtergen::filter;
@@ -11,10 +12,10 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Mutex;
 
 use anyhow::Result;
 use clap::Parser;
+use serde::Serialize;
 
 // use smartcore::dataset::Dataset;
 // use smartcore::linalg::basic::arrays::{Array, Array2};
@@ -40,7 +41,7 @@ fn main() -> Result<()> {
     let args = Args::parse();
     let config = load_config(&args.config);
 
-    // let file = Mutex::new(BufWriter::new(File::create(&args.outfile)?));
+    let mut file = File::create(args.outfile)?;
     let cnt = AtomicUsize::new(0);
     let clf = load_clf(&args.model_file)?;
 
@@ -59,8 +60,16 @@ fn main() -> Result<()> {
         // wtr.write_all(res.as_bytes()).unwrap();
         // wtr.write_all(b"\n").unwrap();
     };
-    let mut runtime = Runtime::new(config, filter, callback)?;
+    let mut runtime = Runtime::new(config.clone(), filter, callback)?;
     runtime.run();
+
+    let output = Output {
+        config,
+        num_conns: cnt.load(Ordering::SeqCst),
+    };
+    if let Ok(serialized) = serde_json::to_string(&output) {
+        file.write_all(serialized.as_bytes())?;
+    }
 
     println!("Done. Processed {:?} connections", cnt);
     Ok(())
@@ -74,4 +83,10 @@ fn load_clf(
     let clf: DecisionTreeClassifier<f64, usize, DenseMatrix<f64>, Vec<usize>> =
         bincode::deserialize_from(&mut file)?;
     Ok(clf)
+}
+
+#[derive(Debug, Serialize)]
+struct Output {
+    config: RuntimeConfig,
+    num_conns: usize,
 }
