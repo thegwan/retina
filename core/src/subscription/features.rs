@@ -170,13 +170,10 @@ pub struct Features {
     #[cfg(feature = "d_ttl_std")]
     d_ttl_std: f64,
 
-    #[serde(serialize_with = "serialize_mac_addr")]
-    #[cfg(not(feature = "timing"))]
-    s_mac: pnet::datalink::MacAddr,
-    #[serde(serialize_with = "serialize_mac_addr")]
-    #[cfg(not(feature = "timing"))]
-    d_mac: pnet::datalink::MacAddr,
+    #[cfg(feature = "label")]
     sni: String,
+    #[cfg(feature = "timing")]
+    syn_ts: f64,
 }
 
 impl Features {}
@@ -224,9 +221,11 @@ impl Subscribable for Features {
 pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
+    #[cfg(feature = "label")]
     sni: String,
     cnt: u64,
     #[cfg(any(
+        feature = "timing",
         feature = "dur",
         feature = "s_load",
         feature = "d_load",
@@ -377,10 +376,6 @@ pub struct TrackedFeatures {
     #[cfg(any(feature = "d_ttl_med", feature = "d_ttl_std"))]
     d_ttl_hist: Vec<f64>,
 
-    #[cfg(not(feature = "timing"))]
-    s_mac: pnet::datalink::MacAddr,
-    #[cfg(not(feature = "timing"))]
-    d_mac: pnet::datalink::MacAddr,
 }
 
 impl TrackedFeatures {
@@ -391,6 +386,7 @@ impl TrackedFeatures {
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
 
         #[cfg(any(
+            feature = "timing",
             feature = "dur",
             feature = "s_load",
             feature = "d_load",
@@ -584,15 +580,8 @@ impl TrackedFeatures {
         let ipv4 = eth.parse_to::<Ipv4>()?;
 
         if segment.dir {
-            #[cfg(not(feature = "timing"))]
-            if self.cnt == 1 {
-                let mbuf = segment.mbuf_ref();
-                let eth = mbuf.parse_to::<Ethernet>()?;
-                self.s_mac = eth.src();
-                self.d_mac = eth.dst();
-            }
-
             #[cfg(any(
+                feature = "timing",
                 feature = "dur",
                 feature = "s_load",
                 feature = "d_load",
@@ -1201,11 +1190,10 @@ impl TrackedFeatures {
             #[cfg(feature = "d_ttl_std")]
             d_ttl_std,
 
-            #[cfg(not(feature = "timing"))]
-            s_mac: self.s_mac,
-            #[cfg(not(feature = "timing"))]
-            d_mac: self.d_mac,
+            #[cfg(feature = "label")]
             sni: self.sni.clone(),
+            #[cfg(feature = "timing")]
+            syn_ts: self.syn_ts,
         };
         #[cfg(feature = "timing")]
         {
@@ -1223,9 +1211,11 @@ impl Trackable for TrackedFeatures {
         TrackedFeatures {
             #[cfg(feature = "timing")]
             compute_ns: 0,
+            #[cfg(feature = "label")]
             sni: "".to_string(),
             cnt: 0,
             #[cfg(any(
+                feature = "timing",
                 feature = "dur",
                 feature = "s_load",
                 feature = "d_load",
@@ -1374,10 +1364,6 @@ impl Trackable for TrackedFeatures {
             #[cfg(any(feature = "d_ttl_med", feature = "d_ttl_std"))]
             d_ttl_hist: vec![],
 
-            #[cfg(not(feature = "timing"))]
-            s_mac: pnet::datalink::MacAddr::zero(),
-            #[cfg(not(feature = "timing"))]
-            d_mac: pnet::datalink::MacAddr::zero(),
         }
     }
 
@@ -1393,8 +1379,11 @@ impl Trackable for TrackedFeatures {
     }
 
     fn on_match(&mut self, session: Session, _subscription: &Subscription<Self::Subscribed>) {
-        if let SessionData::Tls(tls) = session.data {
-            self.sni = tls.sni().to_string();
+        #[cfg(feature = "label")]
+        {
+            if let SessionData::Tls(tls) = session.data {
+                self.sni = tls.sni().to_string();
+            }
         }
     }
 
