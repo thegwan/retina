@@ -6,7 +6,6 @@ use retina_core::config::load_config;
 use retina_core::subscription::features::Features;
 use retina_core::Runtime;
 use retina_filtergen::filter;
-use retina_core::{rte_get_tsc_hz, rte_rdtsc};
 
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -41,14 +40,11 @@ fn main() -> Result<()> {
     let args = Args::parse();
     let config = load_config(&args.config);
 
-    let tsc_ghz: f64 = unsafe { rte_get_tsc_hz() } as f64 / 1e9;
-
     // let file = Mutex::new(BufWriter::new(File::create(&args.outfile)?));
     let cnt = AtomicUsize::new(0);
     let clf = load_clf(&args.model_file)?;
 
     let callback = |features: Features| {
-        let syn_ts = features.syn_ts;
         let feature_vec = features.feature_vec;
         let instance = DenseMatrix::new(1, feature_vec.len(), feature_vec, false);
         //   let start = Instant::now();
@@ -62,8 +58,6 @@ fn main() -> Result<()> {
         // let mut wtr = file.lock().unwrap();
         // wtr.write_all(res.as_bytes()).unwrap();
         // wtr.write_all(b"\n").unwrap();
-        let curr_ts = unsafe { rte_rdtsc() } as f64 / tsc_ghz;
-        println!("{}", curr_ts - syn_ts);
     };
     let mut runtime = Runtime::new(config, filter, callback)?;
     runtime.run();

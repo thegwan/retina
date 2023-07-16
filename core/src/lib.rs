@@ -67,7 +67,6 @@ pub use self::runtime::Runtime;
 
 pub use dpdk::rte_lcore_id;
 pub use dpdk::rte_rdtsc;
-pub use dpdk::rte_get_tsc_hz;
 
 #[macro_use]
 extern crate pest_derive;
