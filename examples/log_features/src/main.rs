@@ -1,4 +1,4 @@
-/// Build: cargo b --features label,d_ttl_mean,d_ttl_max,d_ttl_med,d_ttl_min,d_winsize_med,d_winsize_min,d_winsize_mean,d_winsize_sum,d_winsize_std,d_ttl_sum --bin log_features
+/// Build: cargo b --features label,d_ttl_mean,s_iat_med --bin log_features
 /// Run: sudo env LD_LIBRARY_PATH=$LD_LIBRARY_PATH RUST_LOG=info ./target/debug/log_features -c configs/offline.toml
 
 use retina_core::config::load_config;

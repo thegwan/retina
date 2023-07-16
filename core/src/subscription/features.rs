@@ -173,13 +173,15 @@ pub struct Features {
 
     #[cfg(feature = "label")]
     sni: String,
-    #[cfg(feature = "timing")]
+    #[cfg(feature = "capture_start")]
     syn_ts: f64,
 }
 
 #[cfg(not(any(feature = "timing", feature = "label")))]
 #[derive(Debug, Serialize)]
 pub struct Features {
+    #[cfg(feature = "capture_start")]
+    pub syn_ts: f64,
     pub feature_vec: Vec<f64>,
 }
 
@@ -232,7 +234,7 @@ pub struct TrackedFeatures {
     sni: String,
     cnt: u64,
     #[cfg(any(
-        feature = "timing",
+        feature = "capture_start",
         feature = "dur",
         feature = "s_load",
         feature = "d_load",
@@ -393,7 +395,7 @@ impl TrackedFeatures {
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
 
         #[cfg(any(
-            feature = "timing",
+            feature = "capture_start",
             feature = "dur",
             feature = "s_load",
             feature = "d_load",
@@ -588,7 +590,7 @@ impl TrackedFeatures {
 
         if segment.dir {
             #[cfg(any(
-                feature = "timing",
+                feature = "capture_start",
                 feature = "dur",
                 feature = "s_load",
                 feature = "d_load",
@@ -1200,12 +1202,14 @@ impl TrackedFeatures {
 
             #[cfg(feature = "label")]
             sni: self.sni.clone(),
-            #[cfg(feature = "timing")]
+            #[cfg(feature = "capture_start")]
             syn_ts: self.syn_ts,
         };
 
         #[cfg(not(any(feature = "timing", feature = "label")))]
         let features = Features {
+            #[cfg(feature = "capture_start")]
+            syn_ts: self.syn_ts,
             feature_vec: vec![
                 #[cfg(feature = "dur")]
                 dur,
@@ -1371,7 +1375,7 @@ impl Trackable for TrackedFeatures {
             sni: "".to_string(),
             cnt: 0,
             #[cfg(any(
-                feature = "timing",
+                feature = "capture_start",
                 feature = "dur",
                 feature = "s_load",
                 feature = "d_load",
