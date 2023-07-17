@@ -54,6 +54,7 @@ x509-parser = "0.13.2"
 timing = []
 label = []
 capture_start = []
+conn_cnt = []
 mlx5 = []
 default = ["mlx5"]
 dur = []

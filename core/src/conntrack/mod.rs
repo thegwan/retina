@@ -45,6 +45,8 @@ where
     table: LinkedHashMap<ConnId, Conn<T>>,
     /// Manages connection timeouts.
     timerwheel: TimerWheel,
+    /// Number of connections seen.
+    pub(crate) conn_cnt: u64,
 }
 
 impl<T> ConnTracker<T>
@@ -63,6 +65,7 @@ where
             registry,
             table,
             timerwheel,
+            conn_cnt: 0,
         }
     }
 
@@ -129,6 +132,7 @@ where
                                 conn.inactivity_window,
                             );
                             self.table.insert(conn_id, conn);
+                            self.conn_cnt += 1;
                         }
                     }
                 } else {

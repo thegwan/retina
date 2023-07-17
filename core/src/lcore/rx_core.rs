@@ -122,6 +122,8 @@ where
             nb_pkts,
             nb_bytes
         );
+
+        log::info!("Core {} processed connections: {}", self.id, conn_table.conn_cnt);
     }
 
     fn rx_sink(&self) {
