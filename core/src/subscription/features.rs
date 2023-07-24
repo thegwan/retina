@@ -26,7 +26,7 @@ lazy_static! {
 }
 
 /// A features record.
-#[cfg(any(feature = "timing", feature = "label"))]
+#[cfg(any(feature = "timing", feature = "collect"))]
 #[derive(Debug, Serialize)]
 pub struct Features {
     #[cfg(feature = "dur")]
@@ -177,11 +177,13 @@ pub struct Features {
     syn_ts: f64,
 }
 
-#[cfg(not(any(feature = "timing", feature = "label")))]
+#[cfg(not(any(feature = "timing", feature = "collect")))]
 #[derive(Debug, Serialize)]
 pub struct Features {
     #[cfg(feature = "capture_start")]
     pub syn_ts: f64,
+    #[cfg(feature = "label")]
+    pub sni: String,
     pub feature_vec: Vec<f64>,
 }
 
@@ -1056,7 +1058,7 @@ impl TrackedFeatures {
         #[cfg(any(feature = "d_ttl_std"))]
         let d_ttl_std = stddev(&mut self.d_ttl_hist);
 
-        #[cfg(any(feature = "timing", feature = "label"))]
+        #[cfg(any(feature = "timing", feature = "collect"))]
         let features = Features {
             #[cfg(feature = "dur")]
             dur,
@@ -1206,10 +1208,12 @@ impl TrackedFeatures {
             syn_ts: self.syn_ts,
         };
 
-        #[cfg(not(any(feature = "timing", feature = "label")))]
+        #[cfg(not(any(feature = "timing", feature = "collect")))]
         let features = Features {
             #[cfg(feature = "capture_start")]
             syn_ts: self.syn_ts,
+            #[cfg(feature = "label")]
+            sni: self.sni.clone(),
             feature_vec: vec![
                 #[cfg(feature = "dur")]
                 dur,
