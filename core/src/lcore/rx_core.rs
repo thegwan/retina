@@ -12,6 +12,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use itertools::Itertools;
+use rand::Rng;
 
 /// A RxCore polls from `rxqueues` and reduces the stream of packets into
 /// a stream of higher-level network events to be processed by the user.
@@ -95,15 +96,6 @@ where
             for rxqueue in self.rxqueues.iter() {
                 let mbufs: Vec<Mbuf> = self.rx_burst(rxqueue, 32);
                 for mbuf in mbufs.into_iter() {
-                    // log::debug!("{:#?}", mbuf);
-                    // log::debug!("Mark: {}", mbuf.mark());
-                    // log::debug!("RSS Hash: 0x{:x}", mbuf.rss_hash());
-                    // log::debug!(
-                    //     "Queue ID: {}, Port ID: {}, Core ID: {}",
-                    //     rxqueue.qid,
-                    //     rxqueue.pid,
-                    //     self.id,
-                    // );
                     nb_pkts += 1;
                     nb_bytes += mbuf.data_len() as u64;
                     S::process_packet(mbuf, &self.subscription, &mut conn_table);
