@@ -446,6 +446,7 @@ impl TrackedFeatures {
             feature = "s_load",
             feature = "d_load",
             feature = "d_iat_mean",
+            feature = "d_iat_sum",
             feature = "tcp_rtt",
             feature = "syn_ack",
             feature = "ack_dat",
@@ -502,6 +503,7 @@ impl TrackedFeatures {
             feature = "s_load",
             feature = "d_load",
             feature = "d_iat_mean",
+            feature = "d_iat_sum",
             feature = "tcp_rtt",
             feature = "syn_ack",
             feature = "ack_dat",
@@ -558,6 +560,7 @@ impl TrackedFeatures {
             feature = "s_load",
             feature = "d_load",
             feature = "d_iat_mean",
+            feature = "d_iat_sum",
             feature = "tcp_rtt",
             feature = "syn_ack",
             feature = "ack_dat",
@@ -1586,7 +1589,7 @@ impl Trackable for TrackedFeatures {
     }
 
     fn early_terminate(&self) -> bool {
-        self.cnt >= 1
+        false
     }
 }
 
