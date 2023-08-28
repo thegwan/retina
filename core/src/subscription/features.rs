@@ -392,7 +392,7 @@ pub struct TrackedFeatures {
 impl TrackedFeatures {
     #[inline]
     fn update(&mut self, segment: L4Pdu) -> Result<()> {
-        self.cnt += 1;
+        self.cnt += 1; if False { return Ok(()) }
         #[cfg(feature = "timing")]
         let start_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
 
