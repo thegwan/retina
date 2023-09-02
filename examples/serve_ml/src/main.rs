@@ -1,5 +1,6 @@
-/// Build: cargo b --features d_ttl_mean,d_ttl_max,d_ttl_med,d_ttl_min,d_winsize_med,d_winsize_min,d_winsize_mean,d_winsize_sum,d_winsize_std,d_ttl_sum --bin serve_ml
-/// Run: sudo env LD_LIBRARY_PATH=$LD_LIBRARY_PATH RUST_LOG=info ./target/debug/serve_ml -c configs/offline.toml -m /mnt/netml/datasets/app_class/test/rust_dt.bin -o pred.json
+/// Build: cargo b --features dur,s_bytes_sum,s_bytes_mean --bin serve_ml
+/// Run: sudo env LD_LIBRARY_PATH=$LD_LIBRARY_PATH RUST_LOG=info ./target/debug/serve_ml -c configs/offline.toml -m /mnt/netml/datasets/app_class/test/rust_rf.bin -o pred.json
+/// /mnt/netml/datasets/iot_lite/pkts_5/features_40961
 
 
 use retina_core::config::load_config;
@@ -22,7 +23,8 @@ use serde::Serialize;
 use smartcore::linalg::basic::matrix::DenseMatrix;
 // use smartcore::metrics::accuracy;
 // use smartcore::model_selection::train_test_split;
-use smartcore::tree::decision_tree_classifier::DecisionTreeClassifier;
+// use smartcore::tree::decision_tree_classifier::DecisionTreeClassifier;
+use smartcore::ensemble::random_forest_classifier::RandomForestClassifier;
 
 // Define command-line arguments.
 #[derive(Parser, Debug)]
@@ -46,6 +48,8 @@ fn main() -> Result<()> {
     let clf = load_clf(&args.model_file)?;
 
     let callback = |features: Features| {
+        // //#[cfg(feature = "capture_start")]
+        // println!("Syn ts: {}", features.syn_ts);
         let feature_vec = features.feature_vec;
         let instance = DenseMatrix::new(1, feature_vec.len(), feature_vec, false);
         //   let start = Instant::now();
@@ -78,9 +82,9 @@ fn main() -> Result<()> {
 /// Loads a trained classifier from `file`.
 fn load_clf(
     fname: &PathBuf,
-) -> Result<DecisionTreeClassifier<f64, usize, DenseMatrix<f64>, Vec<usize>>> {
+) -> Result<RandomForestClassifier<f64, usize, DenseMatrix<f64>, Vec<usize>>> {
     let mut file = File::open(fname)?;
-    let clf: DecisionTreeClassifier<f64, usize, DenseMatrix<f64>, Vec<usize>> =
+    let clf: RandomForestClassifier<f64, usize, DenseMatrix<f64>, Vec<usize>> =
         bincode::deserialize_from(&mut file)?;
     Ok(clf)
 }
