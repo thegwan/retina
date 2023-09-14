@@ -23,8 +23,8 @@ use serde::Serialize;
 use smartcore::linalg::basic::matrix::DenseMatrix;
 // use smartcore::metrics::accuracy;
 // use smartcore::model_selection::train_test_split;
-// use smartcore::tree::decision_tree_classifier::DecisionTreeClassifier;
-use smartcore::ensemble::random_forest_classifier::RandomForestClassifier;
+use smartcore::tree::decision_tree_classifier::DecisionTreeClassifier;
+// use smartcore::ensemble::random_forest_classifier::RandomForestClassifier;
 
 // Define command-line arguments.
 #[derive(Parser, Debug)]
@@ -37,7 +37,7 @@ struct Args {
     outfile: PathBuf,
 }
 
-#[filter("ipv4 and tcp")]
+#[filter("ipv4 and tcp and tls")]
 fn main() -> Result<()> {
     env_logger::init();
     let args = Args::parse();
@@ -82,9 +82,9 @@ fn main() -> Result<()> {
 /// Loads a trained classifier from `file`.
 fn load_clf(
     fname: &PathBuf,
-) -> Result<RandomForestClassifier<f64, usize, DenseMatrix<f64>, Vec<usize>>> {
+) -> Result<DecisionTreeClassifier<f64, usize, DenseMatrix<f64>, Vec<usize>>> {
     let mut file = File::open(fname)?;
-    let clf: RandomForestClassifier<f64, usize, DenseMatrix<f64>, Vec<usize>> =
+    let clf: DecisionTreeClassifier<f64, usize, DenseMatrix<f64>, Vec<usize>> =
         bincode::deserialize_from(&mut file)?;
     Ok(clf)
 }
