@@ -427,9 +427,9 @@ impl TrackedFeatures {
             feature = "s_iat_std",
             feature = "d_iat_std",
         ))]
-        let curr_ts = unsafe { rte_rdtsc() } as f64 / *TSC_GHZ;
+        // let curr_ts = unsafe { rte_rdtsc() } as f64 / *TSC_GHZ;
         // #[cfg(not(feature = "timing"))]
-        // let curr_ts = segment.mbuf_ref().timestamp() as f64 * 1e3;
+        let curr_ts = segment.mbuf_ref().timestamp() as f64 * 1e3;
 
         #[cfg(any(
             feature = "proto",
