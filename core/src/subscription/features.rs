@@ -172,11 +172,7 @@ pub struct Features {
     d_ttl_std: f64,
 
     #[cfg(feature = "label")]
-    #[serde(serialize_with = "serialize_mac_addr")]
-    s_mac: pnet::datalink::MacAddr,
-    #[cfg(feature = "label")]
-    #[serde(serialize_with = "serialize_mac_addr")]
-    d_mac: pnet::datalink::MacAddr,
+    malware: String,
     #[cfg(feature = "capture_start")]
     syn_ts: f64,
 }
@@ -187,11 +183,7 @@ pub struct Features {
     #[cfg(feature = "capture_start")]
     pub syn_ts: f64,
     #[cfg(feature = "label")]
-    #[serde(serialize_with = "serialize_mac_addr")]
-    pub s_mac: pnet::datalink::MacAddr,
-    #[cfg(feature = "label")]
-    #[serde(serialize_with = "serialize_mac_addr")]
-    pub d_mac: pnet::datalink::MacAddr,
+    pub malware: String,
     pub feature_vec: Vec<f64>,
 }
 
@@ -241,9 +233,7 @@ pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
     #[cfg(feature = "label")]
-    s_mac: pnet::datalink::MacAddr,
-    #[cfg(feature = "label")]
-    d_mac: pnet::datalink::MacAddr,
+    malware: String,
     cnt: u64,
     #[cfg(any(
         feature = "capture_start",
@@ -606,10 +596,7 @@ impl TrackedFeatures {
         if segment.dir {
             #[cfg(feature = "label")]
             if self.cnt == 1 {
-                let mbuf = segment.mbuf_ref();
-                let eth = mbuf.parse_to::<Ethernet>()?;
-                self.s_mac = eth.src();
-                self.d_mac = eth.dst();
+                self.malware = mbuf.metadata.clone();
             }
 
             #[cfg(any(
@@ -1224,9 +1211,7 @@ impl TrackedFeatures {
             d_ttl_std,
 
             #[cfg(feature = "label")]
-            s_mac: self.s_mac,
-            #[cfg(feature = "label")]
-            d_mac: self.d_mac,
+            malware: self.malware.clone(),
             #[cfg(feature = "capture_start")]
             syn_ts: self.syn_ts,
         };
@@ -1236,9 +1221,7 @@ impl TrackedFeatures {
             #[cfg(feature = "capture_start")]
             syn_ts: self.syn_ts,
             #[cfg(feature = "label")]
-            s_mac: self.s_mac,
-            #[cfg(feature = "label")]
-            d_mac: self.d_mac,
+            malware: self.malware.clone(),
             feature_vec: vec![
                 #[cfg(feature = "dur")]
                 dur,
@@ -1401,9 +1384,7 @@ impl Trackable for TrackedFeatures {
             #[cfg(feature = "timing")]
             compute_ns: 0,
             #[cfg(feature = "label")]
-            s_mac: pnet::datalink::MacAddr::zero(),
-            #[cfg(feature = "label")]
-            d_mac: pnet::datalink::MacAddr::zero(),
+            malware: String::new(),
             cnt: 0,
             #[cfg(any(
                 feature = "capture_start",

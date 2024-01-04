@@ -79,13 +79,20 @@ where
         for pcap in pcaps.iter() {
             log::info!("Processing {}", pcap.display());
             let mut cap = Capture::from_file(pcap).expect("Error opening pcap. Aborting.");
+            let pcap_path = pcap.clone().into_os_string().into_string().unwrap();
+            let parts: Vec<&str> = pcap_path.split('/').collect();
+            let malware_label = parts.last().unwrap().split('.').next().unwrap_or("").to_string();
             while let Ok(frame) = cap.next() {
                 if frame.header.len as usize > self.options.offline.mtu {
                     continue;
                 }
                 let timeval = frame.header.ts;
                 let unix_ts_us = timeval.tv_sec * 1_000_000 + timeval.tv_usec;
+                #[cfg(not(feature = "label"))]
                 let mbuf = Mbuf::from_bytes(frame.data, unix_ts_us, mempool_raw)
+                    .expect("Unable to allocate mbuf. Try increasing mempool size.");
+                #[cfg(feature = "label")]
+                let mbuf = Mbuf::from_bytes(frame.data, unix_ts_us, &malware_label, mempool_raw)
                     .expect("Unable to allocate mbuf. Try increasing mempool size.");
                 nb_pkts += 1;
                 nb_bytes += mbuf.data_len() as u64;

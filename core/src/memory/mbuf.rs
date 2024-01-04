@@ -29,6 +29,8 @@ pub struct Mbuf {
     raw: NonNull<dpdk::rte_mbuf>,
     /// UNIX timestamp in microseconds
     ts: i64,
+    #[cfg(feature = "label")]
+    pub metadata: String,
 }
 
 impl Mbuf {
@@ -38,6 +40,8 @@ impl Mbuf {
             Mbuf {
                 raw: NonNull::new_unchecked(mbuf),
                 ts: 0,
+                #[cfg(feature = "label")]
+                metadata: String::new(),
             }
         }
     }
@@ -47,10 +51,13 @@ impl Mbuf {
         Ok(Mbuf {
             raw: NonNull::new(mbuf).ok_or(MempoolError::Exhausted)?,
             ts: 0,
+            #[cfg(feature = "label")]
+            metadata: String::new(),
         })
     }
 
     /// Creates a new Mbuf from a byte slice `data` and UNIX timestamp `ts`.
+    #[cfg(not(feature = "label"))]
     pub(crate) fn from_bytes(data: &[u8], ts: i64, mp: *mut dpdk::rte_mempool) -> Result<Mbuf> {
         let mut mbuf = unsafe { Mbuf::new(dpdk::rte_pktmbuf_alloc(mp))? };
         if data.len() <= mbuf.raw().buf_len.into() {
@@ -65,6 +72,25 @@ impl Mbuf {
             bail!(MbufError::WritePastBuffer);
         }
         mbuf.ts = ts;
+        Ok(mbuf)
+    }
+
+    #[cfg(feature = "label")]
+    pub(crate) fn from_bytes(data: &[u8], ts: i64, metadata: &String, mp: *mut dpdk::rte_mempool) -> Result<Mbuf> {
+        let mut mbuf = unsafe { Mbuf::new(dpdk::rte_pktmbuf_alloc(mp))? };
+        if data.len() <= mbuf.raw().buf_len.into() {
+            mbuf.raw_mut().data_len += data.len() as u16;
+            mbuf.raw_mut().pkt_len += data.len() as u32;
+            unsafe {
+                let src = data.as_ptr();
+                let dst = mbuf.get_data_address(0) as *mut u8;
+                std::ptr::copy_nonoverlapping(src, dst, data.len());
+            }
+        } else {
+            bail!(MbufError::WritePastBuffer);
+        }
+        mbuf.ts = ts;
+        mbuf.metadata = metadata.to_string();
         Ok(mbuf)
     }
 
