@@ -2,22 +2,12 @@ main_core = 0
 nb_memory_channels = 6
 
 [mempool]
-capacity = 8388608
+capacity = 262144
 cache_size = 512
 
-[online]
-duration = 60
-nb_rxd = 32768
-promiscuous = true
-mtu = 1500
-hardware_assist = false
-[[online.ports]]
-device = "0000:3b:00.0"
-cores = [ 1,]
-
-[online.ports.sink]
-core = 17
-nb_buckets = 1
+[offline]
+pcap = "/mnt/netml/datasets/malware_pcaps"
+mtu = 9702
 
 [conntrack]
 max_connections = 10000000
@@ -29,11 +19,3 @@ tcp_establish_timeout = 5000
 
 [timing]
 outfile = "./compute_features.csv"
-
-[online.monitor.display]
-throughput = true
-mempool_usage = true
-
-[online.monitor.log]
-directory = "/mnt/netml/throughput/app_class/pkts_all/features_147573952589676412927/buckets1_2023-07-16-15-38-51"
-interval = 1000
