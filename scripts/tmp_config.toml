@@ -6,7 +6,7 @@ capacity = 8388608
 cache_size = 512
 
 [online]
-duration = 60
+duration = 15
 nb_rxd = 32768
 promiscuous = true
 mtu = 1500
@@ -17,7 +17,7 @@ cores = [ 1,]
 
 [online.ports.sink]
 core = 17
-nb_buckets = 1
+nb_buckets = 448
 
 [conntrack]
 max_connections = 10000000
@@ -35,5 +35,5 @@ throughput = true
 mempool_usage = true
 
 [online.monitor.log]
-directory = "/mnt/netml/throughput/app_class/pkts_all/features_147573952589676412927/buckets1_2023-07-16-15-38-51"
+directory = "/mnt/netml/throughput/app_class/pkts_43/features_93770032225921902581/2023-12-24-00-09-02/buckets_448"
 interval = 1000

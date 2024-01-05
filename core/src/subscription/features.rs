@@ -223,6 +223,7 @@ impl Subscribable for Features {
     }
 }
 
+
 /// Tracks a feature record throughout its lifetime.
 ///
 /// ## Note
@@ -232,6 +233,8 @@ impl Subscribable for Features {
 pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
+    #[cfg(feature = "capture_start")]
+    e2e_ns: f64,
     #[cfg(feature = "label")]
     sni: String,
     cnt: u64,
@@ -1367,6 +1370,11 @@ impl TrackedFeatures {
             let end_ts = (unsafe { rte_rdtsc() } as f64 / *TSC_GHZ) as u64;
             self.compute_ns += end_ts - start_ts;
         }
+        #[cfg(feature = "capture_start")]
+        {
+            let end_ts = unsafe { rte_rdtsc() } as f64 / *TSC_GHZ;
+            self.e2e_ns = end_ts - self.syn_ts;
+        }
         features
     }
 }
@@ -1378,6 +1386,8 @@ impl Trackable for TrackedFeatures {
         TrackedFeatures {
             #[cfg(feature = "timing")]
             compute_ns: 0,
+            #[cfg(feature = "capture_start")]
+            e2e_ns: 0.0,
             #[cfg(feature = "label")]
             sni: "".to_string(),
             cnt: 0,
@@ -1567,11 +1577,12 @@ impl Trackable for TrackedFeatures {
 
         let conn = features;
         timer_record!(subscription.timers, "compute_ns", self.compute_ns);
+        timer_record!(subscription.timers, "e2e_ns", self.e2e_ns as u64);
         subscription.invoke(conn);
     }
 
     fn early_terminate(&self) -> bool {
-        false
+        self.cnt >= 43
     }
 }
 

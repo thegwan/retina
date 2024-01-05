@@ -46,6 +46,7 @@ impl Timers {
         init(&mut timers, "update");
         init(&mut timers, "extract_features");
         init(&mut timers, "compute_ns");
+        init(&mut timers, "e2e_ns");
         // init(&mut timers, "extract_features");
         // init(&mut timers, "get_curr_ts");
         // init(&mut timers, "get_mbuf");
