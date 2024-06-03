@@ -130,7 +130,9 @@ impl Mbuf {
                 let ptr = self.get_data_address(offset) as *const u8;
                 unsafe { Ok(slice::from_raw_parts(ptr, count) as &[u8]) }
             } else {
-                bail!(MbufError::ReadPastBuffer)
+                // bail!(MbufError::ReadPastBuffer)
+                let ptr = self.get_data_address(offset) as *const u8;
+                unsafe { Ok(slice::from_raw_parts(ptr, self.data_len() - offset) as &[u8]) }
             }
         } else {
             bail!(MbufError::BadOffset)
