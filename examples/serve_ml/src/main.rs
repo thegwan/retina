@@ -37,7 +37,7 @@ struct Args {
     outfile: PathBuf,
 }
 
-#[filter("ipv4 and tcp")]
+#[filter("ipv4 and tcp and tls.sni ~ 'googlevideo'")]
 fn main() -> Result<()> {
     env_logger::init();
     let args = Args::parse();

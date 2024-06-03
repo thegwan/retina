@@ -172,7 +172,7 @@ pub struct Features {
     d_ttl_std: f64,
 
     #[cfg(feature = "label")]
-    malware: String,
+    session_id: String,
     #[cfg(feature = "capture_start")]
     syn_ts: f64,
 }
@@ -183,7 +183,7 @@ pub struct Features {
     #[cfg(feature = "capture_start")]
     pub syn_ts: f64,
     #[cfg(feature = "label")]
-    pub malware: String,
+    pub session_id: String,
     pub feature_vec: Vec<f64>,
 }
 
@@ -233,7 +233,7 @@ pub struct TrackedFeatures {
     #[cfg(feature = "timing")]
     compute_ns: u64,
     #[cfg(feature = "label")]
-    malware: String,
+    session_id: String,
     cnt: u64,
     #[cfg(any(
         feature = "capture_start",
@@ -422,6 +422,7 @@ impl TrackedFeatures {
         let curr_ts = segment.mbuf_ref().timestamp() as f64 * 1e3;
 
         #[cfg(any(
+            feature = "label",
             feature = "proto",
             feature = "s_port",
             feature = "d_port",
@@ -596,7 +597,7 @@ impl TrackedFeatures {
         if segment.dir {
             #[cfg(feature = "label")]
             if self.cnt == 1 {
-                self.malware = mbuf.metadata.clone();
+                self.session_id = mbuf.metadata.clone();
             }
 
             #[cfg(any(
@@ -1211,7 +1212,7 @@ impl TrackedFeatures {
             d_ttl_std,
 
             #[cfg(feature = "label")]
-            malware: self.malware.clone(),
+            session_id: self.session_id.clone(),
             #[cfg(feature = "capture_start")]
             syn_ts: self.syn_ts,
         };
@@ -1221,7 +1222,7 @@ impl TrackedFeatures {
             #[cfg(feature = "capture_start")]
             syn_ts: self.syn_ts,
             #[cfg(feature = "label")]
-            malware: self.malware.clone(),
+            session_id: self.session_id.clone(),
             feature_vec: vec![
                 #[cfg(feature = "dur")]
                 dur,
@@ -1384,7 +1385,7 @@ impl Trackable for TrackedFeatures {
             #[cfg(feature = "timing")]
             compute_ns: 0,
             #[cfg(feature = "label")]
-            malware: String::new(),
+            session_id: String::new(),
             cnt: 0,
             #[cfg(any(
                 feature = "capture_start",

@@ -81,7 +81,7 @@ where
             let mut cap = Capture::from_file(pcap).expect("Error opening pcap. Aborting.");
             let pcap_path = pcap.clone().into_os_string().into_string().unwrap();
             let parts: Vec<&str> = pcap_path.split('/').collect();
-            let malware_label = parts.last().unwrap().split('.').next().unwrap_or("").to_string();
+            let session_id_label = parts.last().unwrap().split('.').next().unwrap_or("").to_string();
             while let Ok(frame) = cap.next() {
                 if frame.header.len as usize > self.options.offline.mtu {
                     continue;
@@ -92,7 +92,7 @@ where
                 let mbuf = Mbuf::from_bytes(frame.data, unix_ts_us, mempool_raw)
                     .expect("Unable to allocate mbuf. Try increasing mempool size.");
                 #[cfg(feature = "label")]
-                let mbuf = Mbuf::from_bytes(frame.data, unix_ts_us, &malware_label, mempool_raw)
+                let mbuf = Mbuf::from_bytes(frame.data, unix_ts_us, &session_id_label, mempool_raw)
                     .expect("Unable to allocate mbuf. Try increasing mempool size.");
                 nb_pkts += 1;
                 nb_bytes += mbuf.data_len() as u64;

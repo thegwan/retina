@@ -30,11 +30,7 @@ struct Args {
     outfile: PathBuf,
 }
 
-//#[filter("ipv4 and tcp and tls and (tls.sni ~ 'zoom\\.us' or tls.sni ~ 'nflxvideo\\.net' or tls.sni ~ 'ttvnw\\.net' or tls.sni ~ 'teams\\.microsoft\\.com')")]
-//#[filter("ipv4 and tcp and tls and (tls.sni ~ 'zoom\\.us' or tls.sni ~ 'nflxvideo\\.net' or tls.sni ~ 'ttvnw\\.net' or tls.sni ~ 'teams\\.microsoft\\.com' or tls.sni ~ 'facebook\\.com' or tls.sni ~ 'fbcdn\\.net' or tls.sni ~ 'twitter\\.com' or tls.sni ~ 'twimg\\.com')")]
-//#[filter("ipv4 and tcp and tls and (tls.sni ~ 'meet\\.google\\.com')")]
-//#[filter("ipv4 and tcp and tls and (tls.sni ~ 'teams\\.microsoft\\.com')")]
-#[filter("ipv4 and tcp")]
+#[filter("ipv4 and tcp and tls")]
 fn main() -> Result<()> {
     env_logger::init();
     let args = Args::parse();
